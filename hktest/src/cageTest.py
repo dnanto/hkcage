@@ -97,22 +97,16 @@ def hk_icosahedron_lattice(h, k, H, K, symmetry, radius, orientation, alpha):
     # The asym unit triangle (corners) and hk lattice triangles are in the xy plane in 3-d.
     
     lattices = {cls.id: cls for cls in (HKTriangle, *all_subclasses(HKTriangle))}
-    print(*sorted(lattices.items()), sep="\n")
     lattice = lattices.get(alpha, HKTriangle)()
 
+    from itertools import chain
     corners = hk3_to_xyz(lattice.corners2d(h, k))
     triangles, t_hex_edges = zip(*lattice.walk(h, k))
-    triangles = list(map(hk3_to_xyz, [ele[0] for ele in filter(len, triangles)]))
-    t_hex_edges = [ele[0] for ele in filter(len, t_hex_edges)]
+    triangles = list(map(hk3_to_xyz, chain.from_iterable(triangles)))
+    t_hex_edges = list(chain.from_iterable(t_hex_edges))
 
     from chimerax.geometry.icosahedron import icosahedron_geometry
     ivarray, itarray = icosahedron_geometry(orientation)
-    # ivarray, itarray = icosahedron_geometry_5(h, k, H, K)
-
-    print(*ivarray, sep="\n")
-    from string import ascii_uppercase
-    for tri in itarray:
-        print(*(ascii_uppercase[tri[i]] for i in range(3)))
 
     # Map the 2d hk asymmetric unit triangles onto each face of an icosahedron
     tlist = []
@@ -494,7 +488,6 @@ class HKTriangleSnubDual(HKTriangleSnub):
         h1t, k1t = self.tri_corner_offset[c]
         h2t, k2t = self.tri_corner_offset[(c + 1) % 6]
         h3t, k3t = self.tri_corner_offset[(c + 2) % 6]
-        h4t, k4t = self.tri_corner_offset[(c + 3) % 6]
         tri = (
             (5 * h0 + k0, 4 * k0 - h0), 
             (5 * h0 + k0 + h1o, 4 * k0 - h0 + k1o), 

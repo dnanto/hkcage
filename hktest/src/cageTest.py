@@ -375,7 +375,6 @@ class HKTriangle(object):
 
     def __init__(self):
         from math import sqrt
-        self.sqrt3 = sqrt(3)
         self.hex_corner_offset = ((2, -1), (1, 1), (-1, 2), (-2, 1), (-1, -1), (1, -2))
 
     def corners2d(self, h, k):
@@ -513,29 +512,26 @@ class HKTriangleRhomb(HKTriangle):
 
     def __init__(self):
         super().__init__()
-        sqrt3 = self.sqrt3
-        self.tri_corner_offset = ((sqrt3, -sqrt3), (sqrt3, 0), (0, sqrt3), (-sqrt3, sqrt3), (-sqrt3, 0), (0, -sqrt3))
+        self.tri_corner_offset = ((2, -2), (2, 0), (0, 2), (-2, 2), (-2, 0), (0, -2))
 
     def corners2d(self, h, k):
-        sqrt3 = self.sqrt3
-        return ((0, 0), ((3 + sqrt3) * h, (3 + sqrt3) * k), (-(3 + sqrt3) * k, (3 + sqrt3) * (h + k)))
+        return ((0, 0), ((3 + 2) * h, (3 + 2) * k), (-(3 + 2) * k, (3 + 2) * (h + k)))
 
     def corner(self, h0, k0, c, corners):
         h1o, k1o = self.hex_corner_offset[c]
         h1t, k1t = self.tri_corner_offset[c]
         h2o, k2o = self.hex_corner_offset[(c + 1) % 6]
         h2t, k2t = self.tri_corner_offset[(c + 1) % 6]
-        sqrt3 = self.sqrt3
         tri = (
-            ((3 + sqrt3) * h0, (3 + sqrt3) * k0), 
-            ((3 + sqrt3) * h0 + h1o, (3 + sqrt3) * k0 + k1o), 
-            ((3 + sqrt3) * h0 + h2o, (3 + sqrt3) * k0 + k2o)
+            ((3 + 2) * h0, (3 + 2) * k0), 
+            ((3 + 2) * h0 + h1o, (3 + 2) * k0 + k1o), 
+            ((3 + 2) * h0 + h2o, (3 + 2) * k0 + k2o)
         )
         yield triangle_intersection(tri, corners, 2)
         tri = (
-            ((3 + sqrt3) * h0 + h1o, (3 + sqrt3) * k0 + k1o), 
-            ((3 + sqrt3) * h0 + h1o + h1t, (3 + sqrt3) * k0 + k1o + k1t), 
-            ((3 + sqrt3) * h0 + h1o + h2t, (3 + sqrt3) * k0 + k1o + k2t)
+            ((3 + 2) * h0 + h1o, (3 + 2) * k0 + k1o), 
+            ((3 + 2) * h0 + h1o + h1t, (3 + 2) * k0 + k1o + k1t), 
+            ((3 + 2) * h0 + h1o + h2t, (3 + 2) * k0 + k1o + k2t)
         )
         yield triangle_intersection(tri, corners, 1)
 

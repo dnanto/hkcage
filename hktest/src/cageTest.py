@@ -15,10 +15,10 @@ def show_hk_lattice(session, h, k, H=None, K=None, symmetry="e", radius=100.0, o
                     color=(255, 255, 255, 255),
                     sphere_factor=0, edge_radius=None, mesh=False, replace=True, alpha=1):
 
+    print(*locals().items(), sep="\n")
     name = f'Icosahedron h = {h}, k = {k}, H = {H}, K = {K}'
-    print(name)
     varray, tarray, hex_edges = hk_icosahedron_lattice(h, k, H, K, symmetry, radius, orientation, alpha)
-    # commenting-out the following for now...
+    # TODO: investigate the commented-out code...
     # interpolate_with_sphere(varray, radius, sphere_factor)
 
     if mesh:
@@ -94,35 +94,36 @@ def hk_icosahedron_lattice(h, k, H, K, symmetry, radius, orientation, alpha):
 
     if symmetry == "e":
         corners_1 = hk3_to_xyz(lattice.corners1(h, k))
-        triangles, t_hex_edges_1 = zip(*lattice.walk(h, k))
-        triangles = list(map(hk3_to_xyz, chain.from_iterable(triangles)))
+        triangles_1, t_hex_edges_1 = zip(*lattice.walk(h, k))
+        triangles_1 = list(map(hk3_to_xyz, chain.from_iterable(triangles_1)))
         t_hex_edges_1 = list(chain.from_iterable(t_hex_edges_1))
         # Map the 2d hk asymmetric unit triangles onto each face of an icosahedron
         ivarray, itarray = icosahedron_geometry(orientation)
         faces = ((ivarray[i0], ivarray[i1], ivarray[i2]) for i0, i1, i2 in itarray)
-        tlist = list(chain.from_iterable((map_triangles(triangle_map(corners_1, face), triangles) for face in faces)))
+        tlist = list(chain.from_iterable((map_triangles(triangle_map(corners_1, face), triangles_1) for face in faces)))
         # Compute the edge mask to show just the hexagon edges.
-        hex_edges = array(t_hex_edges_1 * len(itarray), intc)
+        t_hex_edges = t_hex_edges_1 * len(itarray)
     elif symmetry == "5":
         corners_1 = hk3_to_xyz(lattice.corners1(h, k))
-        triangles, t_hex_edges_1 = zip(*lattice.walk(h, k))
-        triangles = list(map(hk3_to_xyz, chain.from_iterable(triangles)))
+        triangles_1, t_hex_edges_1 = zip(*lattice.walk(h, k))
+        triangles_1 = list(map(hk3_to_xyz, chain.from_iterable(triangles_1)))
         t_hex_edges_1 = list(chain.from_iterable(t_hex_edges_1))
-
         corners_2 = hk3_to_xyz(lattice.corners2(h, k, H, K))
-        triangles, t_hex_edges_2 = zip(*lattice.walk(h, k, H, K, mode=2))
-        triangles = list(map(hk3_to_xyz, chain.from_iterable(triangles)))
+        triangles_2, t_hex_edges_2 = zip(*lattice.walk(h, k, H, K, mode=2))
+        triangles_2 = list(map(hk3_to_xyz, chain.from_iterable(triangles_2)))
         t_hex_edges_2 = list(chain.from_iterable(t_hex_edges_2))
-
         # Map the 2d hk asymmetric unit triangles onto each face of an icosahedron
         ivarray, itarray = icosahedron_geometry_5(h, k, H, K)
+        print(*ivarray, sep="\n")
         faces = [(ivarray[i0], ivarray[i1], ivarray[i2]) for i0, i1, i2 in itarray]
         tlist = (list(chain.from_iterable((
-            *(map_triangles(triangle_map(corners_1, face), triangles) for face in faces[:10]),
-            *(map_triangles(triangle_map(corners_2, face), triangles) for face in faces[10:])
+            *(map_triangles(triangle_map(corners_1, face), triangles_1) for face in faces[:10]),
+            *(map_triangles(triangle_map(corners_2, face), triangles_2) for face in faces[10:])
         ))))
-        # Compute the edge mask to show just the hexagon edges.
-        hex_edges = array((t_hex_edges_1 * len(itarray)) + (t_hex_edges_2 * len(itarray)), intc)
+        t_hex_edges = t_hex_edges_1 * len(itarray) + t_hex_edges_2 * len(itarray)
+
+    # Compute the edge mask to show just the hexagon edges.
+    hex_edges = array(t_hex_edges, intc)
 
     # Convert from triangles defined by 3 vertex points, to an array of
     # unique vertices and triangles as 3 indices into the unique vertex list.
@@ -493,6 +494,8 @@ class HKTriangle(object):
         h1o, k1o = self.hex_corner_offset[c]
         h2o, k2o = self.hex_corner_offset[(c + 1) % 6]
         tri = ((3 * h0, 3 * k0), (3 * h0 + h1o, 3 * k0 + k1o), (3 * h0 + h2o, 3 * k0 + k2o))
+        # for i, e in enumerate(tri):
+        #     print(*e, *tri[(i+1) % 3])
         yield triangle_intersection(tri, corners, 2)
 
     def walk(self, h, k, H=None, K=None, mode=1):
@@ -504,7 +507,8 @@ class HKTriangle(object):
             pass
         else:
             raise ValueError("mode must be in [1, 3]")
-        print(kmax, corners)
+        # for i, e in enumerate(corners):
+        #     print(*e, *corners[(i+1) % 3])
         yield from (
             (ele[0], ele[1])
             for k0 in range(kmax + 1)

@@ -1,4 +1,4 @@
-# -----------------------------------------------------------------------------
+
 # Produce hexagonal lattices on an icosahedron.  The hexagons are bent where
 # they cross the edges of the icosahedron.
 #
@@ -7,18 +7,13 @@
 #       http://viperdb.scripps.edu/icos_server.php?icspage=paradigm
 
 
-# -----------------------------------------------------------------------------
-# Symmetry types.
-# 'e'           equilateral
-# '5'           5-fold
-# '3'           2-fold
-# '2'           2-fold
-#
+# symmetry: equilateral, 5-fold, 3-fold, 2-fold
 symmetry_names = ("e", "5", "3", "2")
 
-def show_hk_lattice(session, h, k, H = None, K = None, symmetry="e",
-                    radius=100.0, orientation='222', color=(255, 255, 255, 255), sphere_factor=0,
-                    edge_radius=None, mesh=False, replace=True, alpha=1):
+
+def show_hk_lattice(session, h, k, H=None, K=None, symmetry="e", radius=100.0, orientation='222',
+                    color=(255, 255, 255, 255),
+                    sphere_factor=0, edge_radius=None, mesh=False, replace=True, alpha=1):
 
     name = f'Icosahedron h = {h}, k = {k}, H = {H}, K = {K}'
     print(name)
@@ -57,8 +52,6 @@ def show_hk_lattice(session, h, k, H = None, K = None, symmetry="e",
     return model
 
 
-# -----------------------------------------------------------------------------
-#
 def _cage_markers(session, name):
     from chimerax.markers import MarkerSet
     mlist = [m for m in session.models.list(type=MarkerSet)
@@ -72,8 +65,6 @@ def _cage_markers(session, name):
     return None
 
 
-# -----------------------------------------------------------------------------
-#
 def _cage_surface(session, name, replace):
     # Make new surface model or find an existing one.
     sm = None
@@ -90,46 +81,59 @@ def _cage_surface(session, name, replace):
     return sm
 
 
-# -----------------------------------------------------------------------------
-#
 def hk_icosahedron_lattice(h, k, H, K, symmetry, radius, orientation, alpha):
     # Find triangles for the hk lattice covering one asymmetric unit equilateral triangle.
     # The asym unit triangle (corners) and hk lattice triangles are in the xy plane in 3-d.
-    
+    from itertools import chain
+
+    from chimerax.geometry.icosahedron import icosahedron_geometry
+    from numpy import array, intc, multiply
+
     lattices = {cls.id: cls for cls in (HKTriangle, *all_subclasses(HKTriangle))}
     lattice = lattices.get(alpha, HKTriangle)()
 
-    from itertools import chain
-    corners = hk3_to_xyz(lattice.corners2d(h, k))
-    triangles, t_hex_edges = zip(*lattice.walk(h, k))
-    triangles = list(map(hk3_to_xyz, chain.from_iterable(triangles)))
-    t_hex_edges = list(chain.from_iterable(t_hex_edges))
+    if symmetry == "e":
+        corners_1 = hk3_to_xyz(lattice.corners1(h, k))
+        triangles, t_hex_edges_1 = zip(*lattice.walk(h, k))
+        triangles = list(map(hk3_to_xyz, chain.from_iterable(triangles)))
+        t_hex_edges_1 = list(chain.from_iterable(t_hex_edges_1))
+        # Map the 2d hk asymmetric unit triangles onto each face of an icosahedron
+        ivarray, itarray = icosahedron_geometry(orientation)
+        faces = ((ivarray[i0], ivarray[i1], ivarray[i2]) for i0, i1, i2 in itarray)
+        tlist = list(chain.from_iterable((map_triangles(triangle_map(corners_1, face), triangles) for face in faces)))
+        # Compute the edge mask to show just the hexagon edges.
+        hex_edges = array(t_hex_edges_1 * len(itarray), intc)
+    elif symmetry == "5":
+        corners_1 = hk3_to_xyz(lattice.corners1(h, k))
+        triangles, t_hex_edges_1 = zip(*lattice.walk(h, k))
+        triangles = list(map(hk3_to_xyz, chain.from_iterable(triangles)))
+        t_hex_edges_1 = list(chain.from_iterable(t_hex_edges_1))
 
-    from chimerax.geometry.icosahedron import icosahedron_geometry
-    ivarray, itarray = icosahedron_geometry(orientation)
+        corners_2 = hk3_to_xyz(lattice.corners2(h, k, H, K))
+        triangles, t_hex_edges_2 = zip(*lattice.walk(h, k, H, K, mode=2))
+        triangles = list(map(hk3_to_xyz, chain.from_iterable(triangles)))
+        t_hex_edges_2 = list(chain.from_iterable(t_hex_edges_2))
 
-    # Map the 2d hk asymmetric unit triangles onto each face of an icosahedron
-    tlist = []
-    for i0, i1, i2 in itarray:
-        face = ivarray[i0], ivarray[i1], ivarray[i2]
-        tmap = triangle_map(corners, face)
-        tlist.extend(map_triangles(tmap, triangles))
+        # Map the 2d hk asymmetric unit triangles onto each face of an icosahedron
+        ivarray, itarray = icosahedron_geometry_5(h, k, H, K)
+        faces = [(ivarray[i0], ivarray[i1], ivarray[i2]) for i0, i1, i2 in itarray]
+        tlist = (list(chain.from_iterable((
+            *(map_triangles(triangle_map(corners_1, face), triangles) for face in faces[:10]),
+            *(map_triangles(triangle_map(corners_2, face), triangles) for face in faces[10:])
+        ))))
+        # Compute the edge mask to show just the hexagon edges.
+        hex_edges = array((t_hex_edges_1 * len(itarray)) + (t_hex_edges_2 * len(itarray)), intc)
 
     # Convert from triangles defined by 3 vertex points, to an array of
     # unique vertices and triangles as 3 indices into the unique vertex list.
     va, ta = surface_geometry(tlist, tolerance=1e-5)
 
     # Scale to requested radius
-    from numpy import array, intc, multiply
     multiply(va, radius, va)
-
-    # Compute the edge mask to show just the hexagon edges.
-    hex_edges = array(t_hex_edges * len(itarray), intc)
 
     return va, ta, hex_edges
 
 
-# -----------------------------------------------------------------------------
 # Triangulate the portion of triangle t1 inside t2.  The triangles are specified
 # by 3 vertex points and are in 2 dimensions.  Only the cases that occur in the
 # hk icosahedral grids are handled.
@@ -184,7 +188,6 @@ def triangle_intersection(t1, t2, edge_mask):
     raise ValueError('hkcage: Unexpected triangle intersection')
 
 
-# -----------------------------------------------------------------------------
 # Vertex and triangle are in two dimensions with triangle defined by 3 corner
 # vertices.
 #
@@ -208,7 +211,6 @@ def vertex_in_triangle(v, t):
     return -1  # Outside
 
 
-# -----------------------------------------------------------------------------
 # Find intersection of segment u->v with triangle boundary.
 # u and v must be an interior and an exterior point.
 #
@@ -220,7 +222,6 @@ def cut_point(u, v, tri):
     raise ValueError('hkcage: No intersection %s %s %s' % (u, v, tri))
 
 
-# -----------------------------------------------------------------------------
 # Find intersection of segment ab with segment cd.
 # Return (x,y) or None if no intersectin.
 #
@@ -244,7 +245,6 @@ def segment_intersection(a, b, c, d):
     return p
 
 
-# -----------------------------------------------------------------------------
 # Mask out edges given by pair of vertex indices (0-2).  Bits 0, 1, and 2
 # correspond to edges 0-1, 1-2, and 2-0 respectively.
 #
@@ -256,7 +256,6 @@ def mask_edge(edge_mask, *edges):
     return emask
 
 
-# -----------------------------------------------------------------------------
 # Shear transform 2d hk points to points on the xy plane in 3 dimensions (z=0).
 #
 def hk3_to_xyz(hklist):
@@ -268,7 +267,6 @@ def hk3_to_xyz(hklist):
     return xyz_list
 
 
-# -----------------------------------------------------------------------------
 # Shear transform 2d hk points to points on the xy plane in 3 dimensions (z=0).
 #
 def hk2_to_xyz(hklist):
@@ -280,7 +278,6 @@ def hk2_to_xyz(hklist):
     return xyz_list
 
 
-# -----------------------------------------------------------------------------
 # Compute the 3 by 4 transform matrix mapping one 3-d triangle to another.
 #
 def triangle_map(tri1, tri2):
@@ -308,7 +305,6 @@ def triangle_map(tri1, tri2):
     return tf
 
 
-# -----------------------------------------------------------------------------
 # Apply a 3x4 affine transformation to vertices of triangles.
 #
 def map_triangles(tmap, triangles):
@@ -316,13 +312,11 @@ def map_triangles(tmap, triangles):
     return tri
 
 
-# -----------------------------------------------------------------------------
 #
 def cross_product(u, v):
     return (u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0])
 
 
-# -----------------------------------------------------------------------------
 # Take a list of triangles where each triangle is specified by 3 xyz vertex
 # positions and convert to a vertex and triangle array where the triangle
 # array contains indices into the vertex array.  Vertices in the original
@@ -352,7 +346,6 @@ def surface_geometry(triangles, tolerance=1e-5):
     return uvarray, tarray
 
 
-# -----------------------------------------------------------------------------
 # Radially interpolate vertex points a certain factor towards a sphere of
 # given radius.
 #
@@ -370,15 +363,131 @@ def interpolate_with_sphere(varray, radius, sphere_factor):
             varray[v, :] = (f * x, f * y, f * z)
 
 
+def rot2(theta):
+    from numpy import array, cos, sin
+    cos_theta, sin_theta = cos(theta), sin(theta)
+    return array(
+        [
+            [cos_theta, sin_theta],
+            [sin_theta, cos_theta]
+        ]
+    )
+
+
+def rot3_x(theta):
+    from numpy import array, cos, sin
+    cos_theta, sin_theta = cos(theta), sin(theta)
+    return array(
+        [
+            [cos_theta, -sin_theta, 0, 0],
+            [sin_theta, cos_theta, 0, 0],
+            [0, 0, 1, 0]
+        ]
+    )
+
+
+def rot3_y(theta):
+    from numpy import array, cos, sin
+    cos_theta, sin_theta = cos(theta), sin(theta)
+    return array(
+        [
+            [1, 0, 0, 0],
+            [0, cos_theta, -sin_theta, 0],
+            [0, sin_theta, cos_theta, 0]
+        ]
+    )
+
+
+def rot3_z(theta):
+    from numpy import array, cos, sin
+    cos_theta, sin_theta = cos(theta), sin(theta)
+    return array(
+        [
+            [cos_theta, 0, -sin_theta, 0],
+            [0, 1, 0, 0],
+            [sin_theta, 0, cos_theta, 0],
+        ]
+    )
+
+
+def icosahedron_geometry_5(h, k, H, K):
+    from chimerax.geometry import Place
+    from numpy import (arccos, arctan2, array, asarray, dot, pi, radians, sqrt,
+                       vstack)
+    from numpy.linalg import norm
+
+    b = array([1, 0])
+    hv = h * b
+    kv = k * dot(rot2(radians(60)), b)
+    Hv = H * dot(rot2(radians(60)), b)
+    Kv = K * dot(rot2(radians(120)), b)
+    Ct = hv + kv
+    Cq = Hv + Kv
+
+    phi = (1 + sqrt(5)) / 2.0
+    b = 0.5
+    a = phi * b
+    ivarray = array((
+        (0, b, -a),     # A
+        (-b, a, 0),     # B
+        (b, a, 0),      # C
+        (a, 0, -b),     # D
+        (0, -b, -a),    # E
+        (-a, 0, -b),    # F
+    ))
+
+    theta = pi / 2 - arctan2((1 / (2 * phi)), 0.5)
+    ivarray = Place(matrix=rot3_y(theta)).transform_points(ivarray)
+    J = ivarray[1]
+    c = norm(J - array([0, J[1], 0]))
+
+    alpha = arccos(dot(Ct, Cq) / (norm(Ct) * norm(Cq)))
+    s = norm(Cq) / norm(Ct)
+    A = J + Place(matrix=rot3_x(-alpha)).transform_vector(s * array([1, 0, 0]))
+
+    C = [A[0], A[1], c * c - A[0] * A[0]]
+    d = J[1] - A[1]
+    D1 = array([C[0], J[1] - sqrt(-(J[2] * J[2]) + 2 * J[2] * C[2] + d * d - C[2] * C[2]), C[2]])
+
+    theta = radians(72)
+    placer = Place(matrix=rot3_z(theta))
+    D2 = placer.transform_points(asarray([D1]))
+    D3 = placer.transform_points(D2)
+    D4 = placer.transform_points(D3)
+    D5 = placer.transform_points(D4)
+    ivarray = vstack((ivarray, D1, D2[0], D3[0], D4[0], D5[0]))
+    ivarray -= asarray([0, (ivarray[1][1] + D1[1]) / 2, 0])
+    ivarray = vstack((ivarray, -ivarray[0]))
+
+    # TODO: replace with numbers
+    from string import ascii_uppercase
+    itarray = (
+        "ABC", "ACD", "ADE", "AEF", "AFB",  # cap Δ
+        "LGH", "LHI", "LIJ", "LJK", "LKG",  # cap ∇
+        "BCG", "CDK", "DEJ", "EFI", "FBH",  # mid ∇
+        "GHB", "KGC", "JKD", "IJE", "HIF",  # mid Δ
+    )
+    itarray = tuple(tuple(ascii_uppercase.find(ele) for ele in tri) for tri in itarray)
+
+    return ivarray, itarray
+
+
+def all_subclasses(cls):
+    # https://stackoverflow.com/a/3862957
+    return set(cls.__subclasses__()).union([s for c in cls.__subclasses__() for s in all_subclasses(c)])
+
+
 class HKTriangle(object):
     id = 1
 
     def __init__(self):
-        from math import sqrt
         self.hex_corner_offset = ((2, -1), (1, 1), (-1, 2), (-2, 1), (-1, -1), (1, -2))
 
-    def corners2d(self, h, k):
+    def corners1(self, h, k):
         return ((0, 0), (3 * h, 3 * k), (-3 * k, 3 * (h + k)))
+
+    def corners2(self, h, k, H, K):
+        return ((0, 0), (3 * h, 3 * k), (-3 * K, 3 * (H + K)))
 
     def corner(self, h0, k0, c, corners):
         h1o, k1o = self.hex_corner_offset[c]
@@ -386,13 +495,20 @@ class HKTriangle(object):
         tri = ((3 * h0, 3 * k0), (3 * h0 + h1o, 3 * k0 + k1o), (3 * h0 + h2o, 3 * k0 + k2o))
         yield triangle_intersection(tri, corners, 2)
 
-    def walk(self, h, k):
-        kmax = max(k, h + k)
-        corners = self.corners2d(h, k)
+    def walk(self, h, k, H=None, K=None, mode=1):
+        if mode == 1:
+            kmax, corners = max(k, h + k), self.corners1(h, k)
+        elif mode == 2:
+            kmax, corners = max(K, H + K), self.corners2(h, k, H, K)
+        elif mode == 3:
+            pass
+        else:
+            raise ValueError("mode must be in [1, 3]")
+        print(kmax, corners)
         yield from (
             (ele[0], ele[1])
-            for k0 in range(kmax + 1) 
-            for h0 in range(-k0, h + 1) 
+            for k0 in range(kmax + 1)
+            for h0 in range(-k0, h + 1)
             for c in range(6)
             for ele in self.corner(h0, k0, c, corners)
             if ele
@@ -414,8 +530,11 @@ class HKTriangleTrihex(HKTriangle):
         super().__init__()
         self.hex_corner_offset = ((1, -1), (1, 0), (0, 1), (-1, 1), (-1, 0), (0, -1))
 
-    def corners2d(self, h, k):
+    def corners1(self, h, k):
         return ((0, 0), (2 * h, 2 * k), (-2 * k, 2 * (h + k)))
+
+    def corners2(self, h, k, H, K):
+        return ((0, 0), (2 * h, 2 * k), (-2 * K, 2 * (H + K)))
 
     def corner(self, h0, k0, c, corners):
         h1o, k1o = self.hex_corner_offset[c]
@@ -426,10 +545,10 @@ class HKTriangleTrihex(HKTriangle):
 
 class HKTriangleTrihexDual(HKTriangle):
     id = 4
-    
+
     def __init__(self):
         super().__init__()
-    
+
     def corner(self, h0, k0, c, corners):
         h1o, k1o = self.hex_corner_offset[c]
         h2o, k2o = self.hex_corner_offset[(c + 1) % 6]
@@ -439,33 +558,37 @@ class HKTriangleTrihexDual(HKTriangle):
 
 class HKTriangleSnub(HKTriangle):
     id = 5
+
     def __init__(self):
         super().__init__()
         self.tri_corner_offset = ((1, 1), (-1, 2), (-2, 1), (-1, -1), (1, -2), (2, -1))
 
-    def corners2d(self, h, k):
+    def corners1(self, h, k):
         return ((0, 0), (5 * h + k, 4 * k - h), (-4 * k + h, 5 * k + 4 * h))
-     
+
+    def corners2(self, h, k, H, K):
+        return ((0, 0), (5 * h + k, 4 * k - h), (-4 * K + H, 5 * K + 4 * H))
+
     def corner(self, h0, k0, c, corners):
         h1o, k1o = self.hex_corner_offset[c]
         h1t, k1t = self.tri_corner_offset[c]
         h2o, k2o = self.hex_corner_offset[(c + 1) % 6]
         h2t, k2t = self.tri_corner_offset[(c + 1) % 6]
         tri = (
-            (5 * h0 + k0, 4 * k0 - h0), 
-            (5 * h0 + k0 + h1o, 4 * k0 - h0 + k1o), 
+            (5 * h0 + k0, 4 * k0 - h0),
+            (5 * h0 + k0 + h1o, 4 * k0 - h0 + k1o),
             (5 * h0 + k0 + h2o, 4 * k0 - h0 + k2o)
         )
         yield triangle_intersection(tri, corners, 2)
         tri = (
-            (5 * h0 + k0 + h1o, 4 * k0 - h0 + k1o), 
-            (5 * h0 + k0 + h1o + h1t, 4 * k0 - h0 + k1o + k1t), 
+            (5 * h0 + k0 + h1o, 4 * k0 - h0 + k1o),
+            (5 * h0 + k0 + h1o + h1t, 4 * k0 - h0 + k1o + k1t),
             (5 * h0 + k0 + h1o + h2t, 4 * k0 - h0 + k1o + k2t)
         )
         yield triangle_intersection(tri, corners, 2)
         tri = (
-            (5 * h0 + k0 + h1o, 4 * k0 - h0 + k1o), 
-            (5 * h0 + k0 + h1o + h1t, 4 * k0 - h0 + k1o + k1t), 
+            (5 * h0 + k0 + h1o, 4 * k0 - h0 + k1o),
+            (5 * h0 + k0 + h1o + h1t, 4 * k0 - h0 + k1o + k1t),
             (5 * h0 + k0 + h1o + h2t, 4 * k0 - h0 + k1o + k2t)
         )
         yield triangle_intersection(tri, corners, 3)
@@ -488,19 +611,19 @@ class HKTriangleSnubDual(HKTriangleSnub):
         h2t, k2t = self.tri_corner_offset[(c + 1) % 6]
         h3t, k3t = self.tri_corner_offset[(c + 2) % 6]
         tri = (
-            (5 * h0 + k0, 4 * k0 - h0), 
-            (5 * h0 + k0 + h1o, 4 * k0 - h0 + k1o), 
+            (5 * h0 + k0, 4 * k0 - h0),
+            (5 * h0 + k0 + h1o, 4 * k0 - h0 + k1o),
             (5 * h0 + k0 + h2o, 4 * k0 - h0 + k2o)
         )
         yield triangle_intersection(tri, corners, 1)
         tri = (
             (5 * h0 + k0 + hst, 4 * k0 - h0 + kst),
-            (5 * h0 + k0 + hst + h1t, 4 * k0 - h0 + kst + k1t), 
+            (5 * h0 + k0 + hst + h1t, 4 * k0 - h0 + kst + k1t),
             (5 * h0 + k0 + hst + h2t, 4 * k0 - h0 + kst + k2t)
         )
         yield triangle_intersection(tri, corners, 2)
         tri = (
-            (5 * h0 + k0 + hst, 4 * k0 - h0 + kst), 
+            (5 * h0 + k0 + hst, 4 * k0 - h0 + kst),
             (5 * h0 + k0 + hst + h2t, 4 * k0 - h0 + kst + k2t),
             (5 * h0 + k0 + hst + h3t, 4 * k0 - h0 + kst + k3t)
         )
@@ -512,25 +635,30 @@ class HKTriangleRhomb(HKTriangle):
 
     def __init__(self):
         super().__init__()
+        self.corners = ((0, 0), (3 + 2, 3 + 2), (-(3 + 2), 3 + 2))
         self.tri_corner_offset = ((2, -2), (2, 0), (0, 2), (-2, 2), (-2, 0), (0, -2))
 
-    def corners2d(self, h, k):
+    def corners1(self, h, k):
         return ((0, 0), ((3 + 2) * h, (3 + 2) * k), (-(3 + 2) * k, (3 + 2) * (h + k)))
 
+    def corners2(self, h, k, H, K):
+        return ((0, 0), ((3 + 2) * h, (3 + 2) * k), (-(3 + 2) * K, (3 + 2) * (H + K)))
+
     def corner(self, h0, k0, c, corners):
+        # TODO: fix grid to use square instead of rectangle
         h1o, k1o = self.hex_corner_offset[c]
         h1t, k1t = self.tri_corner_offset[c]
         h2o, k2o = self.hex_corner_offset[(c + 1) % 6]
         h2t, k2t = self.tri_corner_offset[(c + 1) % 6]
         tri = (
-            ((3 + 2) * h0, (3 + 2) * k0), 
-            ((3 + 2) * h0 + h1o, (3 + 2) * k0 + k1o), 
+            ((3 + 2) * h0, (3 + 2) * k0),
+            ((3 + 2) * h0 + h1o, (3 + 2) * k0 + k1o),
             ((3 + 2) * h0 + h2o, (3 + 2) * k0 + k2o)
         )
         yield triangle_intersection(tri, corners, 2)
         tri = (
-            ((3 + 2) * h0 + h1o, (3 + 2) * k0 + k1o), 
-            ((3 + 2) * h0 + h1o + h1t, (3 + 2) * k0 + k1o + k1t), 
+            ((3 + 2) * h0 + h1o, (3 + 2) * k0 + k1o),
+            ((3 + 2) * h0 + h1o + h1t, (3 + 2) * k0 + k1o + k1t),
             ((3 + 2) * h0 + h1o + h2t, (3 + 2) * k0 + k1o + k2t)
         )
         yield triangle_intersection(tri, corners, 1)
@@ -541,22 +669,29 @@ class HKTriangleRhombDual(HKTriangle):
 
     def __init__(self):
         super().__init__()
+        self.corners = ((0, 0), (6, 6), (-6, 6))
         self.hex_corner_offset = ((3, 0), (0, 3), (-3, 3), (-3, 0), (0, -3), (3, -3))
         self.tri_corner_offset = ((-1, 2), (-2, 1), (-1, -1), (1, -2), (2, -1), (1, 1))
-    
-    def corners2d(self, h, k):
+
+    def corners1(self, h, k):
         return ((0, 0), (6 * h, 6 * k), (-6 * k, 6 * (h + k)))
+
+    def corners2(self, h, k, H, K):
+        return ((0, 0), (6 * h, 6 * k), (-6 * K, 6 * (H + K)))
 
     def corner(self, h0, k0, c, corners):
         h1o, k1o = self.hex_corner_offset[c]
         h1t, k1t = self.tri_corner_offset[c]
         h2o, k2o = self.hex_corner_offset[(c + 1) % 6]
-        tri = ((6 * h0, 6 * k0), (6 * h0 + h1o, 6 * k0 + k1o), (6 * h0 + h2o, 6 * k0 + k2o))
+        tri = (
+            (6 * h0, 6 * k0),
+            (6 * h0 + h1o, 6 * k0 + k1o),
+            (6 * h0 + h2o, 6 * k0 + k2o)
+        )
         yield triangle_intersection(tri, corners, 1)
-        tri = ((6 * h0 + h1o, 6 * k0 + k1o), (6 * h0 + h2o, 6 * k0 + k2o), (6 * h0 + h1o + h1t, 6 * k0 + k1o + k1t))
+        tri = (
+            (6 * h0 + h1o, 6 * k0 + k1o),
+            (6 * h0 + h2o, 6 * k0 + k2o),
+            (6 * h0 + h1o + h1t, 6 * k0 + k1o + k1t)
+        )
         yield triangle_intersection(tri, corners, 2)
-
-
-def all_subclasses(cls):
-    # https://stackoverflow.com/a/3862957
-    return set(cls.__subclasses__()).union([s for c in cls.__subclasses__() for s in all_subclasses(c)])

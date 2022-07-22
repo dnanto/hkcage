@@ -465,8 +465,8 @@ def icosahedron_geometry_5(h, k, H, K):
     itarray = (
         "ABC", "ACD", "ADE", "AEF", "AFB",  # cap Δ
         "LGH", "LHI", "LIJ", "LJK", "LKG",  # cap ∇
-        "BCG", "CDK", "DEJ", "EFI", "FBH",  # mid ∇
-        "GHB", "KGC", "JKD", "IJE", "HIF",  # mid Δ
+        "CBG", "DCK", "EDJ", "FEI", "BFH",  # mid ∇
+        "HGB", "GKC", "KJD", "JIE", "IHF",  # mid Δ
     )
     itarray = tuple(tuple(ascii_uppercase.find(ele) for ele in tri) for tri in itarray)
 
@@ -475,7 +475,7 @@ def icosahedron_geometry_5(h, k, H, K):
 
 def all_subclasses(cls):
     # https://stackoverflow.com/a/3862957
-    return set(cls.__subclasses__()).union([s for c in cls.__subclasses__() for s in all_subclasses(c)])
+    return set(cls.__subclasses__()).union(s for c in cls.__subclasses__() for s in all_subclasses(c))
 
 
 class HKTriangle(object):
@@ -494,8 +494,7 @@ class HKTriangle(object):
         h1o, k1o = self.hex_corner_offset[c]
         h2o, k2o = self.hex_corner_offset[(c + 1) % 6]
         tri = ((3 * h0, 3 * k0), (3 * h0 + h1o, 3 * k0 + k1o), (3 * h0 + h2o, 3 * k0 + k2o))
-        # for i, e in enumerate(tri):
-        #     print(*e, *tri[(i+1) % 3])
+        # print(*((*e, *tri[(i+1) % 3]) for i, e in enumerate(tri)), sep="\n")
         yield triangle_intersection(tri, corners, 2)
 
     def walk(self, h, k, H=None, K=None, mode=1):
@@ -507,8 +506,7 @@ class HKTriangle(object):
             pass
         else:
             raise ValueError("mode must be in [1, 3]")
-        # for i, e in enumerate(corners):
-        #     print(*e, *corners[(i+1) % 3])
+        # print(*((*e, *corners[(i+1) % 3]) for i, e in enumerate(corners)), sep="\n")
         yield from (
             (ele[0], ele[1])
             for k0 in range(kmax + 1)

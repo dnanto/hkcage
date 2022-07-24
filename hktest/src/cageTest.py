@@ -16,7 +16,7 @@ def show_hk_lattice(session, h, k, H=None, K=None, symmetry="e", radius=100.0, o
                     sphere_factor=0, edge_radius=None, mesh=False, replace=True, alpha=1):
 
     print(*locals().items(), sep="\n")
-    name = f'Icosahedron h = {h}, k = {k}, H = {H}, K = {K}'
+    name = f'Icosahedron(h={h}, k={k}, H={H}, K={K}, symmetry={symmetry}, alpha={alpha})'
     varray, tarray, hex_edges = hk_icosahedron_lattice(h, k, H, K, symmetry, radius, orientation, alpha)
     # TODO: investigate the commented-out code...
     # interpolate_with_sphere(varray, radius, sphere_factor)
@@ -410,19 +410,66 @@ def rot3_z(theta):
     )
 
 
+def rot_rodrigues(v, k, t):
+    # https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula
+    from numpy import cos, cross, dot, sin
+    return v * cos(t) + cross(k, v) * sin(t) + dot(k, dot(k, v)) * (1 - cos(t))
+
+
+def bisection(f, a, b, tol, iter):
+    from numpy import sign
+    for _ in range(iter):
+        c = (a + b) / 2
+        f_of_c = f(c)
+        if f_of_c == 0 or (b - a) / 2 < tol:
+            return c
+        if sign(f_of_c) == sign(f(a)):
+            a = c
+        else:
+            b = c
+
+
+def brackets(f, a, b, iter):
+    from numpy import sign
+    frac = b / iter
+    prev = sign(f(a))
+    for i in range(iter):
+        x = a + i * frac
+        curr = sign(f(x))
+        if prev != curr:
+            yield a + (i - 1) * frac, x
+            prev = curr
+
+
+def circle_cylinder_intersection(e, uxe, center, r_cir, r_cyl, iter=10000):
+    from numpy import array, cos, finfo, pi, power, sin
+    ux, uy, uz = e
+    vx, vy, vz = uxe
+    cx, cy, cz = center
+    def fy(t): return r_cir * uy * cos(t) + r_cir * vy * sin(t) + cy
+    def fx(t): return r_cir * ux * cos(t) + r_cir * vx * sin(t) + cx
+    def fz(t): return r_cir * uz * cos(t) + r_cir * vz * sin(t) + cz
+    def f(t): return r_cyl * r_cyl - (power(fx(t), 2) + power(fz(t), 2))
+    yield from (
+        array((fx(t), fy(t), fz(t)))
+        for t in (
+            bisection(f, a, b, finfo(float).eps, iter=iter)
+            for a, b in brackets(f, 0, 2 * pi, iter=iter)
+        )
+    )
+
+
 def icosahedron_geometry_5(h, k, H, K):
+    """Calculate vertex coordinates and connectivity of icosahedron with 5-fold symmetry.
+    @see: https://www.geogebra.org/3d/ebt6eb7f
+    """
     from chimerax.geometry import Place
-    from numpy import (arccos, arctan2, array, asarray, dot, pi, radians, sqrt,
-                       vstack)
+    from numpy import arccos, arctan2, array, dot, pi, radians, sqrt, vstack
     from numpy.linalg import norm
 
-    b = array([1, 0])
-    hv = h * b
-    kv = k * dot(rot2(radians(60)), b)
-    Hv = H * dot(rot2(radians(60)), b)
-    Kv = K * dot(rot2(radians(120)), b)
-    Ct = hv + kv
-    Cq = Hv + Kv
+    b = array((1, 0))
+    Ct = h * b + k * dot(rot2(radians(60)), b)
+    Cq = H * dot(rot2(radians(60)), b) + K * dot(rot2(radians(120)), b)
 
     phi = (1 + sqrt(5)) / 2.0
     b = 0.5
@@ -435,28 +482,26 @@ def icosahedron_geometry_5(h, k, H, K):
         (0, -b, -a),    # E
         (-a, 0, -b),    # F
     ))
-
     theta = pi / 2 - arctan2((1 / (2 * phi)), 0.5)
     ivarray = Place(matrix=rot3_y(theta)).transform_points(ivarray)
 
-    B = ivarray[1]
     s = norm(Cq) / norm(Ct)
     alpha = arccos(dot(Ct, Cq) / (norm(Ct) * norm(Cq)))
-    tv = B + Place(matrix=rot3_x(-alpha)).transform_vector(s * array([1, 0, 0]))
+    v1 = ivarray[1]  # B
+    tv = v1 + Place(matrix=rot3_x(-alpha)).transform_vector(s * array((1, 0, 0)))
 
-    r1 = norm(B - array([0, B[1], 0]))
-    r2 = B[1] - tv[1]
-    Hz = sqrt(r1 * r1 - tv[0] * tv[0])
-    H = array([tv[0], B[1] - sqrt(-(B[2] * B[2]) + 2 * B[2] * Hz + r2 * r2 - Hz * Hz), Hz])
+    r1 = norm(v1 - array((0, v1[1], 0)))
+    r2 = v1[1] - tv[1]
+    v6z = sqrt(r1 * r1 - tv[0] * tv[0])
+    v6 = array([tv[0], v1[1] - sqrt(-(v1[2] * v1[2]) + 2 * v1[2] * v6z + r2 * r2 - v6z * v6z), v6z])  # G
 
     placer = Place(matrix=rot3_z(radians(72)))
-    I = placer.transform_points(asarray([H]))
-    J = placer.transform_points(I)
-    K = placer.transform_points(J)
-    L = placer.transform_points(K)
-    ivarray = vstack((ivarray, H, I[0], J[0], K[0], L[0]))
-    ivarray -= asarray([0, (B[1] + H[1]) / 2, 0])
-    ivarray = vstack((ivarray, -ivarray[0]))
+    v7 = placer.transform_points(array([v6]))  # H
+    v8 = placer.transform_points(v7)           # I
+    v9 = placer.transform_points(v8)           # J
+    vA = placer.transform_points(v9)           # K
+    ivarray = vstack((ivarray, v6, v7[0], v8[0], v9[0], vA[0])) - array((0, (v1[1] + v6[1]) / 2, 0))
+    ivarray = vstack((ivarray, -ivarray[0]))   # L <- -A
 
     # TODO: replace with numbers
     from string import ascii_uppercase
@@ -466,10 +511,78 @@ def icosahedron_geometry_5(h, k, H, K):
         "CBG", "DCK", "EDJ", "FEI", "BFH",  # mid ∇
         "HGB", "GKC", "KJD", "JIE", "IHF",  # mid Δ
     )
-
+    print(*itarray, sep="\n")
     itarray = tuple(tuple(map(ascii_uppercase.find, tri)) for tri in itarray)
+    print(*itarray, sep="\n")
 
     return ivarray, itarray
+
+
+def icosahedron_geometry_3(h, k, H, K):
+    """Calculate vertex coordinates and connectivity of icosahedron with 3-fold symmetry.
+    @see: https://www.geogebra.org/3d/z2pxwfn4
+    """
+    from operator import itemgetter
+
+    from chimerax.geometry import Place
+    from numpy import (abs, arccos, array, cross, dot, mean, radians, sqrt,
+                       vstack)
+    from numpy.linalg import norm
+
+    b = array((1, 0))
+    Ct = h * b + k * dot(rot2(radians(60)), b)
+    Cq = H * dot(rot2(radians(60)), b) + K * dot(rot2(radians(120)), b)
+
+    phi = (1 + sqrt(5)) / 2.0
+    b = 0.5
+    a = phi * b
+    ivarray = array((
+        (0, b, -a),  # A
+        (-b, a, 0),  # B
+        (b, a, 0),   # C
+        (0, b, a),   # D
+        (a, 0, -b),  # E
+        (-a, 0, -b)  # F
+    ))
+    y_axis = array((0, 1, 0))
+    centroid = mean(ivarray[1:4], axis=0)  # @ BCD
+    theta = arccos(dot(y_axis, centroid) / (norm(y_axis) * norm(centroid)))
+    ivarray = Place(matrix=rot3_x(theta)).transform_points(ivarray)
+
+    u = ivarray[2] - ivarray[3]  # C - D
+    u /= norm(u)
+    v = array((u[1], -u[0], 0))
+    w = cross(u, v)
+    k = w / norm(w)
+    alpha = arccos(dot(Ct, Cq) / (norm(Ct) * norm(Cq)))
+    side = norm(Cq) / norm(Ct)
+    # ivarray[3] -> D
+    tip = ivarray[3] + side * rot_rodrigues(u, k, alpha)
+    center = ivarray[3] + dot(tip - ivarray[3], u) / dot(u, u) * u
+    r_cir = norm(tip - center)
+    r_cyl = norm(array([0, ivarray[3][1], 0]) - ivarray[3])
+    e = tip - center
+    e /= norm(e)
+    uxe = cross(u, e)
+    uxe /= norm(uxe)
+
+    v6 = min(circle_cylinder_intersection(e, uxe, center, r_cir, r_cyl), key=itemgetter(1))  # G
+    placer = Place(matrix=rot3_y(radians(120)))
+    v7 = placer.transform_points(array([v6]))  # H
+    v8 = placer.transform_points(v7)           # I
+
+    yval = v6[1] - (ivarray[0][1] - ivarray[3][1])  # y(G) - (y(A) - y(D))
+    cvec = dot(rot3_y(radians(60)), array((v6[0], yval, v6[2], 1))) - array((0, yval, 0))
+    cvec = abs(ivarray[0][2]) * cvec / norm(cvec)
+    v9 = array((cvec[0], yval, cvec[2]))       # J
+    placer = Place(matrix=rot3_y(radians(120)))
+    vA = placer.transform_points(array([v9]))  # K
+    vB = placer.transform_points(vA)           # L
+
+    ivarray = vstack((*ivarray, v6, v7[0], v8[0], v9, vA[0], vB[0]))
+    ivarray -= array((0, (ivarray[0][1] + ivarray[11][1]) / 2, 0))
+
+    return ivarray, []
 
 
 def all_subclasses(cls):

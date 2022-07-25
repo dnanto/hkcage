@@ -134,7 +134,7 @@ def hk_icosahedron_lattice(h, k, H, K, symmetry, radius, orientation, alpha):
         triangles_3 = list(map(hk3_to_xyz, chain.from_iterable(triangles_3)))
         t_hex_edges_3 = list(chain.from_iterable(t_hex_edges_3))
         # Map the 2d hk asymmetric unit triangles onto each face of an icosahedron
-        ivarray, itarray = icosahedron_geometry_5(h, k, H, K)
+        ivarray, itarray = icosahedron_geometry_3(h, k, H, K)
         faces = [(ivarray[i0], ivarray[i1], ivarray[i2]) for i0, i1, i2 in itarray]
         tlist = (list(chain.from_iterable((
             *(map_triangles(triangle_map(corners_1, face), triangles_1) for face in faces[:8]),
@@ -479,6 +479,7 @@ def circle_cylinder_intersection(e, uxe, center, r_cir, r_cyl, iter=10000):
             bisection(f, a, b, finfo(float).eps, iter=iter)
             for a, b in brackets(f, 0, 2 * pi, iter=iter)
         )
+        if t
     )
 
 
@@ -516,7 +517,7 @@ def icosahedron_geometry_5(h, k, H, K):
     r1 = norm(v1 - array((0, v1[1], 0)))
     r2 = v1[1] - tv[1]
     v6z = sqrt(r1 * r1 - tv[0] * tv[0])
-    v6 = array([tv[0], v1[1] - sqrt(-(v1[2] * v1[2]) + 2 * v1[2] * v6z + r2 * r2 - v6z * v6z), v6z])  # G
+    v6 = array((tv[0], v1[1] - sqrt(-(v1[2] * v1[2]) + 2 * v1[2] * v6z + r2 * r2 - v6z * v6z), v6z))  # G
 
     placer = Place(matrix=rot3_z(radians(72)))
     v7 = placer.transform_points(array([v6]))  # H
@@ -589,16 +590,16 @@ def icosahedron_geometry_3(h, k, H, K):
 
     v6 = min(circle_cylinder_intersection(e, uxe, center, r_cir, r_cyl), key=itemgetter(1))  # G
     placer = Place(matrix=rot3_z(radians(120)))
-    v7 = placer.transform_points(array([v6]))       # H
-    v8 = placer.transform_points(v7)                # I
+    v7 = placer.transform_points(array([v6]))  # H
+    v8 = placer.transform_points(v7)           # I
 
     yval = v6[1] - (ivarray[0][1] - ivarray[3][1])  # y(G) - (y(A) - y(D))
     cvec = dot(rot3_z(radians(60)), array((v6[0], yval, v6[2], 1))) - array((0, yval, 0))
     cvec = abs(ivarray[0][2]) * cvec / norm(cvec)
-    v9 = array((cvec[0], yval, cvec[2]))            # J
+    v9 = array((cvec[0], yval, cvec[2]))       # J
     placer = Place(matrix=rot3_z(radians(120)))
-    vA = placer.transform_points(array([v9]))       # K
-    vB = placer.transform_points(vA)                # L
+    vA = placer.transform_points(array([v9]))  # K
+    vB = placer.transform_points(vA)           # L
 
     ivarray = vstack((*ivarray, v6, v7[0], v8[0], v9, vA[0], vB[0]))
     ivarray -= array((0, (ivarray[0][1] + ivarray[11][1]) / 2, 0))

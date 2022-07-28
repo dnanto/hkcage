@@ -143,8 +143,12 @@ def hk_icosahedron_lattice(h, k, H, K, symmetry, radius, orientation, alpha):
         ))))
         t_hex_edges = t_hex_edges_1 * len(itarray) + t_hex_edges_2 * len(itarray) + t_hex_edges_3 * len(itarray)
 
+    # for debug, for now...
     print(*ivarray, sep="\n")
-    print(*itarray, sep="\n")
+    from string import ascii_uppercase
+    for x, y, z in itarray:
+        print(
+            f"({ascii_uppercase[x]}, {ascii_uppercase[y]}, {ascii_uppercase[z]}) -> ({ivarray[x]}, {ivarray[y]}, {ivarray[z]})")
 
     # Compute the edge mask to show just the hexagon edges.
     hex_edges = array(t_hex_edges, intc)
@@ -590,16 +594,16 @@ def icosahedron_geometry_3(h, k, H, K):
 
     v6 = min(circle_cylinder_intersection(e, uxe, center, r_cir, r_cyl), key=itemgetter(1))  # G
     placer = Place(matrix=rot3_z(radians(120)))
-    v7 = placer.transform_points(array([v6]))  # H
-    v8 = placer.transform_points(v7)           # I
+    v7 = placer.transform_points(array([v6]))       # H
+    v8 = placer.transform_points(v7)                # I
 
     yval = v6[1] - (ivarray[0][1] - ivarray[3][1])  # y(G) - (y(A) - y(D))
     cvec = dot(rot3_z(radians(60)), array((v6[0], yval, v6[2], 1))) - array((0, yval, 0))
     cvec = abs(ivarray[0][2]) * cvec / norm(cvec)
-    v9 = array((cvec[0], yval, cvec[2]))       # J
+    v9 = array((cvec[0], yval, cvec[2]))            # J
     placer = Place(matrix=rot3_z(radians(120)))
-    vA = placer.transform_points(array([v9]))  # K
-    vB = placer.transform_points(vA)           # L
+    vA = placer.transform_points(array([v9]))       # K
+    vB = placer.transform_points(vA)                # L
 
     ivarray = vstack((*ivarray, v6, v7[0], v8[0], v9, vA[0], vB[0]))
     ivarray -= array((0, (ivarray[0][1] + ivarray[11][1]) / 2, 0))
@@ -616,9 +620,87 @@ def icosahedron_geometry_3(h, k, H, K):
         "DGC", "EHA", "FIB",  # mid ∇ 2
         "DLG", "EJH", "FKI"   # mid Δ 2
     )
+
     itarray = tuple(tuple(map(ascii_uppercase.find, tri)) for tri in itarray)
 
     return ivarray, itarray
+
+
+def icosahedron_geometry_2(h, k, H, K):
+    """Calculate vertex coordinates and connectivity of icosahedron with 2-fold symmetry.
+    @see: https://www.geogebra.org/3d/ucxunycw
+    """
+    from operator import itemgetter
+
+    from chimerax.geometry import Place
+    from numpy import arccos, array, cross, dot, radians, sqrt, vstack
+    from numpy.linalg import norm
+
+    b = array((1, 0))
+    Ct = h * b + k * dot(rot2(radians(60)), b)
+    Cq = H * dot(rot2(radians(60)), b) + K * dot(rot2(radians(120)), b)
+
+    phi = (1 + sqrt(5)) / 2.0
+    b = 0.5
+    a = phi * b
+    ivarray = array((
+        (-b, a, 0),  # A
+        (b, a, 0),   # B
+        (0, b, a),   # C
+        (0, b, -a),  # D
+        (-a, 0, b),  # E
+        (a, 0, -b)   # F
+    ))
+
+    u = ivarray[1] - ivarray[2]
+    u /= norm(u)
+    v = array((u[1], -u[0], 0))
+    w = cross(u, v)
+    k = w / norm(w)
+    alpha = arccos(dot(Ct, Cq) / (norm(Ct) * norm(Cq)))
+    side = norm(Cq) / norm(Ct)
+    tip = ivarray[2] + side * rot_rodrigues(u, k, alpha)
+    center = ivarray[2] + dot(tip - ivarray[2], u) / dot(u, u) * u
+    r_cir = norm(tip - center)
+    r_cyl = norm(ivarray[2])
+    e = tip - center
+    e /= norm(e)
+    uxe = cross(u, e)
+    uxe /= norm(uxe)
+
+    v6 = min(circle_cylinder_intersection(e, uxe, center, r_cir, r_cyl), key=itemgetter(1))
+
+    placer = Place(matrix=rot3_x(radians(180)))
+    v7 = placer.transform_points(array([v6]))[0]
+
+    temp = ivarray[2]
+    temp[1] = 0
+    theta = arccos(dot(ivarray[5], temp) / (norm(ivarray[5]) * norm(temp)))
+    temp = placer.transform_points(array([v6]))[0] - array((0, ivarray[0][1], 0))
+    c1 = array((0, temp[1], 0))
+    v8 = c1 + ivarray[2][2] * (temp - c1)
+    v9 = placer.transform_points(array([v8]))[0]
+
+    temp = Place(matrix=rot3_x(theta + radians(90))).transform_points(array([v6]))[0] - array((0, ivarray[1][1], 0))
+    c2 = array((0, temp[1], 0))
+    temp = c2 + ivarray[1][0] * (temp - c2)
+    vA = placer.transform_points(array([temp]))[0]
+    vB = placer.transform_points(array([temp]))[0]
+
+    ivarray = vstack((*ivarray, v6, v7, v8, v9, vA, vB))
+    ivarray -= array((0, (ivarray[5][1] + v6[1]) / 2, 0))
+
+    # TODO: replace with numbers
+    from string import ascii_uppercase
+    itarray = (
+        "ABC", "ACE", "BAD", "BDF", "LKJ", "LJG", "KLI", "KIH",
+        "EJK", "JEC", "CGJ", "GCB", "FIL", "IFD", "DHI", "HDA",
+        "AEH", "KHE", "BFG", "LGF"
+    )
+
+    itarray = tuple(tuple(map(ascii_uppercase.find, tri)) for tri in itarray)
+
+    return ivarray, []
 
 
 def all_subclasses(cls):

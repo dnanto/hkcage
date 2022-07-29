@@ -102,7 +102,7 @@ def hk_icosahedron_lattice(h, k, H, K, symmetry, radius, orientation, alpha):
         faces = ((ivarray[i0], ivarray[i1], ivarray[i2]) for i0, i1, i2 in itarray)
         tlist = list(chain.from_iterable((map_triangles(triangle_map(corners_1, face), triangles_1) for face in faces)))
         # Compute the edge mask to show just the hexagon edges.
-        t_hex_edges = t_hex_edges_1 * len(itarray)
+        t_hex_edges = t_hex_edges_1 * 20
     elif symmetry == "5":
         corners_1 = hk3_to_xyz(lattice.corners(h, k, h, k))
         triangles_1, t_hex_edges_1 = zip(*lattice.walk(h, k))
@@ -119,7 +119,7 @@ def hk_icosahedron_lattice(h, k, H, K, symmetry, radius, orientation, alpha):
             *(map_triangles(triangle_map(corners_1, face), triangles_1) for face in faces[:10]),
             *(map_triangles(triangle_map(corners_2, face), triangles_2) for face in faces[10:])
         ))))
-        t_hex_edges = t_hex_edges_1 * len(itarray) + t_hex_edges_2 * len(itarray)
+        t_hex_edges = t_hex_edges_1 * 10 + t_hex_edges_2 * 10
     elif symmetry == "3":
         corners_1 = hk3_to_xyz(lattice.corners(h, k, h, k))
         triangles_1, t_hex_edges_1 = zip(*lattice.walk(h, k))
@@ -141,14 +141,34 @@ def hk_icosahedron_lattice(h, k, H, K, symmetry, radius, orientation, alpha):
             *(map_triangles(triangle_map(corners_2, face), triangles_2) for face in faces[8:14]),
             *(map_triangles(triangle_map(corners_3, face), triangles_3) for face in faces[14:])
         ))))
-        t_hex_edges = t_hex_edges_1 * len(itarray) + t_hex_edges_2 * len(itarray) + t_hex_edges_3 * len(itarray)
+        t_hex_edges = t_hex_edges_1 * 8 + t_hex_edges_2 * 6 + t_hex_edges_3 * 6
+    elif symmetry == "2":
+        corners_1 = hk3_to_xyz(lattice.corners(h, k, h, k))
+        triangles_1, t_hex_edges_1 = zip(*lattice.walk(h, k))
+        triangles_1 = list(map(hk3_to_xyz, chain.from_iterable(triangles_1)))
+        t_hex_edges_1 = list(chain.from_iterable(t_hex_edges_1))
+        corners_2 = hk3_to_xyz(lattice.corners(h, k, H, K))
+        triangles_2, t_hex_edges_2 = zip(*lattice.walk(h, k, H, K, mode=2))
+        triangles_2 = list(map(hk3_to_xyz, chain.from_iterable(triangles_2)))
+        t_hex_edges_2 = list(chain.from_iterable(t_hex_edges_2))
+        corners_3 = hk3_to_xyz(lattice.corners(h, k, K, h))
+        triangles_3, t_hex_edges_3 = zip(*lattice.walk(h, k, K, h, mode=3))
+        triangles_3 = list(map(hk3_to_xyz, chain.from_iterable(triangles_3)))
+        t_hex_edges_3 = list(chain.from_iterable(t_hex_edges_3))
+        # Map the 2d hk asymmetric unit triangles onto each face of an icosahedron
+        ivarray, itarray = icosahedron_geometry_2(h, k, H, K)
+        faces = [(ivarray[i0], ivarray[i1], ivarray[i2]) for i0, i1, i2 in itarray]
+        tlist = (list(chain.from_iterable((
+            *(map_triangles(triangle_map(corners_1, face), triangles_1) for face in faces[:8]),
+            *(map_triangles(triangle_map(corners_2, face), triangles_2) for face in faces[8:16]),
+            *(map_triangles(triangle_map(corners_3, face), triangles_3) for face in faces[16:])
+        ))))
+        t_hex_edges = t_hex_edges_1 * 8 + t_hex_edges_2 * 8 + t_hex_edges_3 * 4
 
     # for debug, for now...
-    print(*ivarray, sep="\n")
     from string import ascii_uppercase
-    for x, y, z in itarray:
-        print(
-            f"({ascii_uppercase[x]}, {ascii_uppercase[y]}, {ascii_uppercase[z]}) -> ({ivarray[x]}, {ivarray[y]}, {ivarray[z]})")
+    for i, e in enumerate(ivarray):
+        print(ascii_uppercase[i], *e, sep="\t")
 
     # Compute the edge mask to show just the hexagon edges.
     hex_edges = array(t_hex_edges, intc)
@@ -406,9 +426,9 @@ def rot3_x(theta):
     cos_theta, sin_theta = cos(theta), sin(theta)
     return array(
         [
-            [cos_theta, -sin_theta, 0, 0],
-            [sin_theta, cos_theta, 0, 0],
-            [0, 0, 1, 0]
+            [1, 0, 0, 0],
+            [0, cos_theta, -sin_theta, 0],
+            [0, sin_theta, cos_theta, 0]
         ]
     )
 
@@ -418,9 +438,9 @@ def rot3_y(theta):
     cos_theta, sin_theta = cos(theta), sin(theta)
     return array(
         [
-            [1, 0, 0, 0],
-            [0, cos_theta, -sin_theta, 0],
-            [0, sin_theta, cos_theta, 0]
+            [cos_theta, 0, sin_theta, 0],
+            [0, 1, 0, 0],
+            [-sin_theta, 0, cos_theta, 0],
         ]
     )
 
@@ -430,9 +450,9 @@ def rot3_z(theta):
     cos_theta, sin_theta = cos(theta), sin(theta)
     return array(
         [
-            [cos_theta, 0, -sin_theta, 0],
-            [0, 1, 0, 0],
-            [sin_theta, 0, cos_theta, 0],
+            [cos_theta, -sin_theta, 0, 0],
+            [sin_theta, cos_theta, 0, 0],
+            [0, 0, 1, 0]
         ]
     )
 
@@ -511,24 +531,25 @@ def icosahedron_geometry_5(h, k, H, K):
         (-a, 0, -b),    # F
     ))
     theta = pi / 2 - arctan2((1 / (2 * phi)), 0.5)
-    ivarray = Place(matrix=rot3_y(theta)).transform_points(ivarray)
+    ivarray = Place(matrix=rot3_x(theta)).transform_points(ivarray)
 
     s = norm(Cq) / norm(Ct)
     alpha = arccos(dot(Ct, Cq) / (norm(Ct) * norm(Cq)))
     v1 = ivarray[1]  # B
-    tv = v1 + Place(matrix=rot3_x(-alpha)).transform_vector(s * array((1, 0, 0)))
+    tv = v1 + Place(matrix=rot3_z(-alpha)).transform_vector(s * array([1, 0, 0]))
 
     r1 = norm(v1 - array((0, v1[1], 0)))
     r2 = v1[1] - tv[1]
     v6z = sqrt(r1 * r1 - tv[0] * tv[0])
     v6 = array((tv[0], v1[1] - sqrt(-(v1[2] * v1[2]) + 2 * v1[2] * v6z + r2 * r2 - v6z * v6z), v6z))  # G
 
-    placer = Place(matrix=rot3_z(radians(72)))
+    placer = Place(matrix=rot3_y(radians(72)))
     v7 = placer.transform_points(array([v6]))  # H
     v8 = placer.transform_points(v7)           # I
     v9 = placer.transform_points(v8)           # J
     vA = placer.transform_points(v9)           # K
-    ivarray = vstack((ivarray, v6, v7[0], v8[0], v9[0], vA[0])) - array((0, (v1[1] + v6[1]) / 2, 0))
+    ivarray = vstack((ivarray, v6, v7[0], v8[0], v9[0], vA[0]))
+    ivarray -= array((0, (v1[1] + v6[1]) / 2, 0))
     ivarray = vstack((ivarray, -ivarray[0]))   # L <- -A
 
     # TODO: replace with numbers
@@ -573,7 +594,7 @@ def icosahedron_geometry_3(h, k, H, K):
     y_axis = array((0, 1, 0))
     centroid = mean(ivarray[1:4], axis=0)  # @ BCD
     theta = arccos(dot(y_axis, centroid) / (norm(y_axis) * norm(centroid)))
-    ivarray = Place(matrix=rot3_y(theta)).transform_points(ivarray)
+    ivarray = Place(matrix=rot3_x(theta)).transform_points(ivarray)
 
     u = ivarray[2] - ivarray[3]  # C - D
     u /= norm(u)
@@ -593,17 +614,17 @@ def icosahedron_geometry_3(h, k, H, K):
     uxe /= norm(uxe)
 
     v6 = min(circle_cylinder_intersection(e, uxe, center, r_cir, r_cyl), key=itemgetter(1))  # G
-    placer = Place(matrix=rot3_z(radians(120)))
-    v7 = placer.transform_points(array([v6]))       # H
-    v8 = placer.transform_points(v7)                # I
+    placer = Place(matrix=rot3_y(radians(120)))
+    v7 = placer.transform_points(array([v6]))  # H
+    v8 = placer.transform_points(v7)           # I
 
     yval = v6[1] - (ivarray[0][1] - ivarray[3][1])  # y(G) - (y(A) - y(D))
-    cvec = dot(rot3_z(radians(60)), array((v6[0], yval, v6[2], 1))) - array((0, yval, 0))
+    cvec = dot(rot3_y(radians(60)), array((v6[0], yval, v6[2], 1))) - array((0, yval, 0))
     cvec = abs(ivarray[0][2]) * cvec / norm(cvec)
-    v9 = array((cvec[0], yval, cvec[2]))            # J
-    placer = Place(matrix=rot3_z(radians(120)))
-    vA = placer.transform_points(array([v9]))       # K
-    vB = placer.transform_points(vA)                # L
+    v9 = array((cvec[0], yval, cvec[2]))       # J
+    placer = Place(matrix=rot3_y(radians(120)))
+    vA = placer.transform_points(array([v9]))  # K
+    vB = placer.transform_points(vA)           # L
 
     ivarray = vstack((*ivarray, v6, v7[0], v8[0], v9, vA[0], vB[0]))
     ivarray -= array((0, (ivarray[0][1] + ivarray[11][1]) / 2, 0))
@@ -620,7 +641,6 @@ def icosahedron_geometry_3(h, k, H, K):
         "DGC", "EHA", "FIB",  # mid ∇ 2
         "DLG", "EJH", "FKI"   # mid Δ 2
     )
-
     itarray = tuple(tuple(map(ascii_uppercase.find, tri)) for tri in itarray)
 
     return ivarray, itarray
@@ -670,7 +690,7 @@ def icosahedron_geometry_2(h, k, H, K):
 
     v6 = min(circle_cylinder_intersection(e, uxe, center, r_cir, r_cyl), key=itemgetter(1))
 
-    placer = Place(matrix=rot3_x(radians(180)))
+    placer = Place(matrix=rot3_y(radians(180)))
     v7 = placer.transform_points(array([v6]))[0]
 
     temp = ivarray[2]
@@ -681,7 +701,7 @@ def icosahedron_geometry_2(h, k, H, K):
     v8 = c1 + ivarray[2][2] * (temp - c1)
     v9 = placer.transform_points(array([v8]))[0]
 
-    temp = Place(matrix=rot3_x(theta + radians(90))).transform_points(array([v6]))[0] - array((0, ivarray[1][1], 0))
+    temp = Place(matrix=rot3_y(theta + radians(90))).transform_points(array([v6]))[0] - array((0, ivarray[1][1], 0))
     c2 = array((0, temp[1], 0))
     temp = c2 + ivarray[1][0] * (temp - c2)
     vA = placer.transform_points(array([temp]))[0]
@@ -697,7 +717,6 @@ def icosahedron_geometry_2(h, k, H, K):
         "EJK", "JEC", "CGJ", "GCB", "FIL", "IFD", "DHI", "HDA",
         "AEH", "KHE", "BFG", "LGF"
     )
-
     itarray = tuple(tuple(map(ascii_uppercase.find, tri)) for tri in itarray)
 
     return ivarray, []

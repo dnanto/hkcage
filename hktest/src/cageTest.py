@@ -548,6 +548,7 @@ def icosahedron_geometry_5(h, k, H, K):
     v8 = placer.transform_points(v7)           # I
     v9 = placer.transform_points(v8)           # J
     vA = placer.transform_points(v9)           # K
+
     ivarray = vstack((ivarray, v6, v7[0], v8[0], v9[0], vA[0]))
     ivarray -= array((0, (v1[1] + v6[1]) / 2, 0))
     ivarray = vstack((ivarray, -ivarray[0]))   # L <- -A
@@ -557,8 +558,8 @@ def icosahedron_geometry_5(h, k, H, K):
     itarray = (
         "ABC", "ACD", "ADE", "AEF", "AFB",  # cap Δ
         "LGH", "LHI", "LIJ", "LJK", "LKG",  # cap ∇
-        "CBG", "DCK", "EDJ", "FEI", "BFH",  # mid ∇
-        "HGB", "GKC", "KJD", "JIE", "IHF",  # mid Δ
+        "CBG", "DCH", "EDI", "FEJ", "BFK",  # mid ∇
+        "HGC", "GKB", "KJF", "JIE", "IHD",  # mid Δ
     )
     itarray = tuple(tuple(map(ascii_uppercase.find, tri)) for tri in itarray)
 

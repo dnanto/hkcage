@@ -165,7 +165,7 @@ def hk_icosahedron_lattice(h, k, H, K, symmetry, radius, orientation, alpha):
         ))))
         t_hex_edges = t_hex_edges_1 * 8 + t_hex_edges_2 * 8 + t_hex_edges_3 * 4
 
-    # for debug, for now...
+    # TODO: keep for debug, remove for production...
     from string import ascii_uppercase
     for i, e in enumerate(ivarray):
         print(ascii_uppercase[i], *e, sep="\t")
@@ -690,23 +690,21 @@ def icosahedron_geometry_2(h, k, H, K):
     uxe /= norm(uxe)
 
     v6 = min(circle_cylinder_intersection(e, uxe, center, r_cir, r_cyl), key=itemgetter(1))
+    placer180 = Place(matrix=rot3_y(radians(180)))
+    v7 = placer180.transform_points(array([v6]))[0]
 
-    placer = Place(matrix=rot3_y(radians(180)))
-    v7 = placer.transform_points(array([v6]))[0]
-
-    temp = ivarray[2]
-    temp[1] = 0
+    temp = array((ivarray[2][0], 0, ivarray[2][2]))
     theta = arccos(dot(ivarray[5], temp) / (norm(ivarray[5]) * norm(temp)))
-    temp = placer.transform_points(array([v6]))[0] - array((0, ivarray[0][1], 0))
+    placer = Place(matrix=rot3_y(theta))
+    temp = placer.transform_points(array([v6]))[0] - array((0, ivarray[2][1], 0))
     c1 = array((0, temp[1], 0))
     v8 = c1 + ivarray[2][2] * (temp - c1)
-    v9 = placer.transform_points(array([v8]))[0]
+    v9 = placer180.transform_points(array([v8]))[0]
 
     temp = Place(matrix=rot3_y(theta + radians(90))).transform_points(array([v6]))[0] - array((0, ivarray[1][1], 0))
     c2 = array((0, temp[1], 0))
-    temp = c2 + ivarray[1][0] * (temp - c2)
-    vA = placer.transform_points(array([temp]))[0]
-    vB = placer.transform_points(array([temp]))[0]
+    vA = c2 + ivarray[1][0] * (temp - c2)
+    vB = placer180.transform_points(array([vA]))[0]
 
     ivarray = vstack((*ivarray, v6, v7, v8, v9, vA, vB))
     ivarray -= array((0, (ivarray[5][1] + v6[1]) / 2, 0))
@@ -720,7 +718,7 @@ def icosahedron_geometry_2(h, k, H, K):
     )
     itarray = tuple(tuple(map(ascii_uppercase.find, tri)) for tri in itarray)
 
-    return ivarray, []
+    return ivarray, itarray
 
 
 def all_subclasses(cls):

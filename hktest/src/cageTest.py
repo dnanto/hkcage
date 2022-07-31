@@ -558,8 +558,8 @@ def icosahedron_geometry_5(h, k, H, K):
     itarray = (
         "ABC", "ACD", "ADE", "AEF", "AFB",  # cap Δ
         "LGH", "LHI", "LIJ", "LJK", "LKG",  # cap ∇
-        "CBG", "DCH", "EDI", "FEJ", "BFK",  # mid ∇
-        "HGC", "GKB", "KJF", "JIE", "IHD",  # mid Δ
+        "BCG", "CDH", "DEI", "EFJ", "FBK",  # mid ∇
+        "GHC", "KGB", "JKF", "IJE", "HID",  # mid Δ
     )
     itarray = tuple(tuple(map(ascii_uppercase.find, tri)) for tri in itarray)
 
@@ -637,10 +637,10 @@ def icosahedron_geometry_3(h, k, H, K):
         "AFB", "BDC", "CEA",  # cap ∇
         "JHK", "KIL", "LGJ",  # cap Δ
         "JKL",                # cap -
-        "BID", "CGE", "AHF",  # mid Δ 1
-        "ILD", "GJE", "HKF",  # mid ∇ 1
-        "DGC", "EHA", "FIB",  # mid ∇ 2
-        "DLG", "EJH", "FKI"   # mid Δ 2
+        "DGC", "EHA", "FIB",  # mid ∇ 1
+        "DLG", "EJH", "FKI",  # mid Δ 1
+        "BID", "CGE", "AHF",  # mid Δ 2
+        "ILD", "GJE", "HKF",  # mid ∇ 2
     )
     itarray = tuple(tuple(map(ascii_uppercase.find, tri)) for tri in itarray)
 

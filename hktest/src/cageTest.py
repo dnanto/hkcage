@@ -488,8 +488,8 @@ def brackets(f, a, b, iter):
             prev = curr
 
 
-def circle_cylinder_intersection(e, uxe, center, r_cir, r_cyl, iter=10000):
-    from numpy import array, cos, finfo, pi, power, sin
+def circle_cylinder_intersection(e, uxe, center, r_cir, r_cyl, iter=10000, tol=10**-15):
+    from numpy import array, cos, pi, power, sin
     ux, uy, uz = e
     vx, vy, vz = uxe
     cx, cy, cz = center
@@ -500,7 +500,7 @@ def circle_cylinder_intersection(e, uxe, center, r_cir, r_cyl, iter=10000):
     yield from (
         array((fx(t), fy(t), fz(t)))
         for t in (
-            bisection(f, a, b, finfo(float).eps, iter=iter)
+            bisection(f, a, b, tol=tol, iter=iter)
             for a, b in brackets(f, 0, 2 * pi, iter=iter)
         )
         if t

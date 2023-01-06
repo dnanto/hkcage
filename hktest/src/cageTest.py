@@ -112,7 +112,7 @@ def hk_icosahedron_lattice(h, k, H, K, symmetry, radius, orientation, alpha):
         triangles_x, t_hex_edges_x = zip(*lattice.walk(h, k))
         triangles_x = list(map(hk3_to_xyz, chain.from_iterable(triangles_x)))
         t_hex_edges_x = list(chain.from_iterable(t_hex_edges_x))
-        corners_2 = hk3_to_xyz(lattice.corners5(h, k, H, K))
+        corners_2 = hk3_to_xyz(lattice.corners2(h, k, H, K))
         triangles_2, t_hex_edges_2 = zip(*lattice.walk(h, k, H, K, mode=2))
         triangles_2 = list(map(hk3_to_xyz, chain.from_iterable(triangles_2)))
         t_hex_edges_2 = list(chain.from_iterable(t_hex_edges_2))
@@ -126,50 +126,59 @@ def hk_icosahedron_lattice(h, k, H, K, symmetry, radius, orientation, alpha):
             *(map_triangles(triangle_map(corners_2, face), triangles_2) for face in faces[10:])
         ))))
         t_hex_edges = t_hex_edges_1 * 5 + t_hex_edges_x * 5 + t_hex_edges_2 * 10
-    # elif symmetry == "3":
-    #     corners_1 = hk3_to_xyz(lattice.corners(h, k, h, k))
-    #     triangles_1, t_hex_edges_1 = zip(*lattice.walk(h, k))
-    #     triangles_1 = list(map(hk3_to_xyz, chain.from_iterable(triangles_1)))
-    #     t_hex_edges_1 = list(chain.from_iterable(t_hex_edges_1))
-    #     corners_2 = hk3_to_xyz(lattice.corners(h, k, H, K))
-    #     triangles_2, t_hex_edges_2 = zip(*lattice.walk(h, k, H, K, mode=2))
-    #     triangles_2 = list(map(hk3_to_xyz, chain.from_iterable(triangles_2)))
-    #     t_hex_edges_2 = list(chain.from_iterable(t_hex_edges_2))
-    #     corners_3 = hk3_to_xyz(lattice.corners(h, k, K, h))
-    #     triangles_3, t_hex_edges_3 = zip(*lattice.walk(h, k, K, h, mode=3))
-    #     triangles_3 = list(map(hk3_to_xyz, chain.from_iterable(triangles_3)))
-    #     t_hex_edges_3 = list(chain.from_iterable(t_hex_edges_3))
-    #     # Map the 2d hk asymmetric unit triangles onto each face of an icosahedron
-    #     ivarray, itarray = icosahedron_geometry_3(h, k, H, K)
-    #     faces = [(ivarray[i0], ivarray[i1], ivarray[i2]) for i0, i1, i2 in itarray]
-    #     tlist = (list(chain.from_iterable((
-    #         *(map_triangles(triangle_map(corners_1, face), triangles_1) for face in faces[:8]),
-    #         *(map_triangles(triangle_map(corners_2, face), triangles_2) for face in faces[8:14]),
-    #         *(map_triangles(triangle_map(corners_3, face), triangles_3) for face in faces[14:])
-    #     ))))
-    #     t_hex_edges = t_hex_edges_1 * 8 + t_hex_edges_2 * 6 + t_hex_edges_3 * 6
-    # elif symmetry == "2":
-    #     corners_1 = hk3_to_xyz(lattice.corners(h, k, h, k))
-    #     triangles_1, t_hex_edges_1 = zip(*lattice.walk(h, k))
-    #     triangles_1 = list(map(hk3_to_xyz, chain.from_iterable(triangles_1)))
-    #     t_hex_edges_1 = list(chain.from_iterable(t_hex_edges_1))
-    #     corners_2 = hk3_to_xyz(lattice.corners(h, k, H, K))
-    #     triangles_2, t_hex_edges_2 = zip(*lattice.walk(h, k, H, K, mode=2))
-    #     triangles_2 = list(map(hk3_to_xyz, chain.from_iterable(triangles_2)))
-    #     t_hex_edges_2 = list(chain.from_iterable(t_hex_edges_2))
-    #     corners_3 = hk3_to_xyz(lattice.corners(h, k, K, h))
-    #     triangles_3, t_hex_edges_3 = zip(*lattice.walk(h, k, K, h, mode=3))
-    #     triangles_3 = list(map(hk3_to_xyz, chain.from_iterable(triangles_3)))
-    #     t_hex_edges_3 = list(chain.from_iterable(t_hex_edges_3))
-    #     # Map the 2d hk asymmetric unit triangles onto each face of an icosahedron
-    #     ivarray, itarray = icosahedron_geometry_2(h, k, H, K)
-    #     faces = [(ivarray[i0], ivarray[i1], ivarray[i2]) for i0, i1, i2 in itarray]
-    #     tlist = (list(chain.from_iterable((
-    #         *(map_triangles(triangle_map(corners_1, face), triangles_1) for face in faces[:8]),
-    #         *(map_triangles(triangle_map(corners_2, face), triangles_2) for face in faces[8:16]),
-    #         *(map_triangles(triangle_map(corners_3, face), triangles_3) for face in faces[16:])
-    #     ))))
-    #     t_hex_edges = t_hex_edges_1 * 8 + t_hex_edges_2 * 8 + t_hex_edges_3 * 4
+    elif symmetry == "3":
+        corners_1 = hk3_to_xyz(lattice.corners(k, h, k, h))
+        triangles_1, t_hex_edges_1 = zip(*lattice.walk(k, h))
+        triangles_1 = list(map(hk3_to_xyz, chain.from_iterable(triangles_1)))
+        t_hex_edges_1 = list(chain.from_iterable(t_hex_edges_1))
+        corners_x = hk3_to_xyz(lattice.corners(h, k, k, h))
+        triangles_x, t_hex_edges_x = zip(*lattice.walk(h, k))
+        triangles_x = list(map(hk3_to_xyz, chain.from_iterable(triangles_x)))
+        t_hex_edges_x = list(chain.from_iterable(t_hex_edges_x))
+        corners_2 = hk3_to_xyz(lattice.corners2(h, k, H, K))
+        triangles_2, t_hex_edges_2 = zip(*lattice.walk(h, k, H, K, mode=2))
+        triangles_2 = list(map(hk3_to_xyz, chain.from_iterable(triangles_2)))
+        t_hex_edges_2 = list(chain.from_iterable(t_hex_edges_2))
+        # corners_3 = hk3_to_xyz(lattice.corners(h, k, K, h))
+        # triangles_3, t_hex_edges_3 = zip(*lattice.walk(h, k, K, h, mode=3))
+        # triangles_3 = list(map(hk3_to_xyz, chain.from_iterable(triangles_3)))
+        # t_hex_edges_3 = list(chain.from_iterable(t_hex_edges_3))
+        # Map the 2d hk asymmetric unit triangles onto each face of an icosahedron
+        ivarray, itarray = icosahedron_geometry_3(h, k, H, K)
+        faces = [(ivarray[i0], ivarray[i1], ivarray[i2]) for i0, i1, i2 in itarray]
+        tlist = (list(chain.from_iterable((
+            *(map_triangles(triangle_map(corners_1, face), triangles_1) for face in faces[:4]),
+            *(map_triangles(triangle_map(corners_x, face), triangles_x) for face in faces[4:8]),
+            *(map_triangles(triangle_map(corners_2, face), triangles_2) for face in faces[8:14]),
+            # *(map_triangles(triangle_map(corners_3, face), triangles_3) for face in faces[14:])
+        ))))
+        t_hex_edges = t_hex_edges_1 * 4 + t_hex_edges_x * 4 + t_hex_edges_2 * 6  # + t_hex_edges_3 * 6
+    elif symmetry == "2":
+        corners_1 = hk3_to_xyz(lattice.corners(h, k, k, h))
+        triangles_1, t_hex_edges_1 = zip(*lattice.walk(h, k))
+        triangles_1 = list(map(hk3_to_xyz, chain.from_iterable(triangles_1)))
+        t_hex_edges_1 = list(chain.from_iterable(t_hex_edges_1))
+        corners_x = hk3_to_xyz(lattice.corners(h, k, k, h))
+        triangles_x, t_hex_edges_x = zip(*lattice.walk(h, k))
+        triangles_x = list(map(hk3_to_xyz, chain.from_iterable(triangles_x)))
+        t_hex_edges_x = list(chain.from_iterable(t_hex_edges_x))
+        corners_2 = hk3_to_xyz(lattice.corners2(h, k, H, K))
+        triangles_2, t_hex_edges_2 = zip(*lattice.walk(h, k, H, K, mode=2))
+        triangles_2 = list(map(hk3_to_xyz, chain.from_iterable(triangles_2)))
+        t_hex_edges_2 = list(chain.from_iterable(t_hex_edges_2))
+        # corners_3 = hk3_to_xyz(lattice.corners(h, k, K, h))
+        # triangles_3, t_hex_edges_3 = zip(*lattice.walk(h, k, K, h, mode=3))
+        # triangles_3 = list(map(hk3_to_xyz, chain.from_iterable(triangles_3)))
+        # t_hex_edges_3 = list(chain.from_iterable(t_hex_edges_3))
+        # Map the 2d hk asymmetric unit triangles onto each face of an icosahedron
+        ivarray, itarray = icosahedron_geometry_2(h, k, H, K)
+        faces = [(ivarray[i0], ivarray[i1], ivarray[i2]) for i0, i1, i2 in itarray]
+        tlist = (list(chain.from_iterable((
+            *(map_triangles(triangle_map(corners_1, face), triangles_1) for face in faces[:8]),
+            *(map_triangles(triangle_map(corners_2, face), triangles_2) for face in faces[8:16]),
+            # *(map_triangles(triangle_map(corners_3, face), triangles_3) for face in faces[16:])
+        ))))
+        t_hex_edges = t_hex_edges_1 * 8 + t_hex_edges_2 * 8  # + t_hex_edges_3 * 4
 
     # TODO: keep for debug, remove for production...
     from string import ascii_uppercase
@@ -645,8 +654,8 @@ def icosahedron_geometry_3(h, k, H, K):
         "AFB", "BDC", "CEA",  # cap ∇
         "JHK", "KIL", "LGJ",  # cap Δ
         "JKL",                # cap -
-        "DGC", "EHA", "FIB",  # mid ∇ 1
-        "DLG", "EJH", "FKI",  # mid Δ 1
+        "DCG", "EAH", "FBI",  # mid ∇ 1
+        "GLD", "HJE", "IKF",  # mid Δ 1
         "BID", "CGE", "AHF",  # mid Δ 2
         "ILD", "GJE", "HKF",  # mid ∇ 2
     )
@@ -720,9 +729,9 @@ def icosahedron_geometry_2(h, k, H, K):
     # TODO: replace with numbers
     from string import ascii_uppercase
     itarray = (
-        "ABC", "ACE", "BAD", "BDF", "LKJ", "LJG", "KLI", "KIH",
-        "EJK", "JEC", "CGJ", "GCB", "FIL", "IFD", "DHI", "HDA",
-        "AEH", "KHE", "BFG", "LGF"
+        "ABC", "ACE", "BAD", "BDF", "LKJ", "LJG", "KLI", "KIH",  # cap
+        "JKE", "ECJ", "GJC", "CBG", "ILF", "FDI", "HID", "DAH",  # mid 1
+        "AEH", "KHE", "BFG", "LGF"                               # mid 2
     )
     itarray = tuple(tuple(map(ascii_uppercase.find, tri)) for tri in itarray)
 
@@ -749,7 +758,7 @@ class HKTriangle(object):
     def corners(self, h, k, H, K):
         return ((0, 0), (3 * h, 3 * k), (-3 * k, 3 * (h + k)))
 
-    def corners5(self, h, k, H, K):
+    def corners2(self, h, k, H, K):
         return ((0, 0), (-3 * k, 3 * (h + k)), (-3 * (H + K), 3 * H))
 
     def walk(self, h, k, H=None, K=None, mode=1):
@@ -764,7 +773,7 @@ class HKTriangle(object):
                 if ele
             )
         elif mode == 2:
-            corners = self.corners5(h, k, H, K)
+            corners = self.corners2(h, k, H, K)
             # yield ([[*corners]], [2])  # hack
             yield from (
                 ele

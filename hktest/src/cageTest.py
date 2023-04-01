@@ -10,10 +10,47 @@
 def show_hk_lattice(session, h, k, radius, orientation='222',
                     color=(255, 255, 255, 255), sphere_factor=0,
                     edge_radius=None, mesh=False, replace=True, alpha=1):
-    varray, tarray, hex_edges = hk_icosahedron_lattice(h, k, radius, orientation, alpha)
+    varray, tarray, hex_edges = hk_icosahedron_lattice(
+        h, k, radius, orientation, alpha)
     interpolate_with_sphere(varray, radius, sphere_factor)
 
     name = 'Icosahedron h = %d, k = %d' % (h, k)
+
+    import sys
+
+    import numpy as np
+    # print("varray", type(varray), varray.shape, "tarray", type(tarray), tarray.shape, "hex_edges",
+    #       type(hex_edges), hex_edges.shape, sep="\n", file=sys.stderr)
+
+    R = 1
+    r = R * np.sqrt(3.0)/2.0
+    b = np.matrix(((2.0*r, 1.0*r), (0.0*R, 1.5*R)))
+
+    varray = []
+    tarray = []
+    nth = 0
+    for i in range(-h, k+1):  # row
+        for j in range(h + k+1):  # col
+            p = (b @ np.array([i, j])).A1
+            varray.append([*p, 0])
+            varray.append([*(p + np.array([0, R])), 0])
+            varray.append([*(p + np.array([r, R/2])), 0])
+            varray.append([*(p + np.array([r, -R/2])), 0])
+            varray.append([*(p + np.array([0, -R])), 0])
+            varray.append([*(p + np.array([-r, -R/2])), 0])
+            varray.append([*(p + np.array([-r, -R/2])), 0])
+            tarray.append([nth, nth+1, nth+2])
+            tarray.append([nth, nth+2, nth+3])
+            tarray.append([nth, nth+3, nth+4])
+            tarray.append([nth, nth+4, nth+5])
+            tarray.append([nth, nth+5, nth+6])
+            nth += 7
+
+    varray = np.array(varray)
+    tarray = np.array(tarray)
+    hex_edges = np.array([2] * len(tarray), np.intc)
+    print("varray", varray, "tarray", tarray, "hex_edges",
+          hex_edges, sep="\n", file=sys.stderr)
 
     if mesh:
         model = sm = _cage_surface(session, name, replace)
@@ -152,15 +189,18 @@ def hk_triangle_snub(h, k):
                 h1t, k1t = tri_corner_offset[c]
                 h2o, k2o = hex_corner_offset[(c + 1) % 6]
                 h2t, k2t = tri_corner_offset[(c + 1) % 6]
-                tri = ((5 * h0 + k0, 4 * k0 - h0), (5 * h0 + k0 + h1o, 4 * k0 - h0 + k1o), (5 * h0 + k0 + h2o, 4 * k0 - h0 + k2o))
+                tri = ((5 * h0 + k0, 4 * k0 - h0), (5 * h0 + k0 + h1o, 4 *
+                       k0 - h0 + k1o), (5 * h0 + k0 + h2o, 4 * k0 - h0 + k2o))
                 ti, he = triangle_intersection(tri, corners2d, 2)
                 triangles2d.extend(ti)
                 hex_edges.extend(he)
-                tri = ((5 * h0 + k0 + h1o, 4 * k0 - h0 + k1o), (5 * h0 + k0 + h1o + h1t, 4 * k0 - h0 + k1o + k1t), (5 * h0 + k0 + h1o + h2t, 4 * k0 - h0 + k1o + k2t))
+                tri = ((5 * h0 + k0 + h1o, 4 * k0 - h0 + k1o), (5 * h0 + k0 + h1o + h1t, 4 *
+                       k0 - h0 + k1o + k1t), (5 * h0 + k0 + h1o + h2t, 4 * k0 - h0 + k1o + k2t))
                 ti, he = triangle_intersection(tri, corners2d, 2)
                 triangles2d.extend(ti)
                 hex_edges.extend(he)
-                tri = ((5 * h0 + k0 + h1o, 4 * k0 - h0 + k1o), (5 * h0 + k0 + h1o + h1t, 4 * k0 - h0 + k1o + k1t), (5 * h0 + k0 + h1o + h2t, 4 * k0 - h0 + k1o + k2t))
+                tri = ((5 * h0 + k0 + h1o, 4 * k0 - h0 + k1o), (5 * h0 + k0 + h1o + h1t, 4 *
+                       k0 - h0 + k1o + k1t), (5 * h0 + k0 + h1o + h2t, 4 * k0 - h0 + k1o + k2t))
                 ti, he = triangle_intersection(tri, corners2d, 3)
                 triangles2d.extend(ti)
                 hex_edges.extend(he)
@@ -192,15 +232,18 @@ def hk_triangle_snub_dual(h, k):
                 h2t, k2t = tri_corner_offset[(c + 1) % 6]
                 h3t, k3t = tri_corner_offset[(c + 2) % 6]
                 h4t, k4t = tri_corner_offset[(c + 3) % 6]
-                tri = ((5 * h0 + k0, 4 * k0 - h0), (5 * h0 + k0 + h1o, 4 * k0 - h0 + k1o), (5 * h0 + k0 + h2o, 4 * k0 - h0 + k2o))
+                tri = ((5 * h0 + k0, 4 * k0 - h0), (5 * h0 + k0 + h1o, 4 *
+                       k0 - h0 + k1o), (5 * h0 + k0 + h2o, 4 * k0 - h0 + k2o))
                 ti, he = triangle_intersection(tri, corners2d, 1)
                 triangles2d.extend(ti)
                 hex_edges.extend(he)
-                tri = ((5 * h0 + k0 + hst, 4 * k0 - h0 + kst), (5 * h0 + k0 + hst + h1t, 4 * k0 - h0 + kst + k1t), (5 * h0 + k0 + hst + h2t, 4 * k0 - h0 + kst + k2t))
+                tri = ((5 * h0 + k0 + hst, 4 * k0 - h0 + kst), (5 * h0 + k0 + hst + h1t, 4 *
+                       k0 - h0 + kst + k1t), (5 * h0 + k0 + hst + h2t, 4 * k0 - h0 + kst + k2t))
                 ti, he = triangle_intersection(tri, corners2d, 2)
                 triangles2d.extend(ti)
                 hex_edges.extend(he)
-                tri = ((5 * h0 + k0 + hst, 4 * k0 - h0 + kst), (5 * h0 + k0 + hst + h2t, 4 * k0 - h0 + kst + k2t), (5 * h0 + k0 + hst + h3t, 4 * k0 - h0 + kst + k3t))
+                tri = ((5 * h0 + k0 + hst, 4 * k0 - h0 + kst), (5 * h0 + k0 + hst + h2t, 4 *
+                       k0 - h0 + kst + k2t), (5 * h0 + k0 + hst + h3t, 4 * k0 - h0 + kst + k3t))
                 ti, he = triangle_intersection(tri, corners2d, 2)
                 triangles2d.extend(ti)
                 hex_edges.extend(he)
@@ -215,10 +258,12 @@ def hk_triangle_rhomb(h, k):
     # Multiply h,k by 3 so hexagon corners have integer coordinates for
     # exact intersection calculations.
     from math import sqrt
-    corners2d = ((0, 0), ((3+sqrt(3)) * h, (3+sqrt(3)) * k), (-(3+sqrt(3)) * k, (3+sqrt(3)) * (h + k)))
+    corners2d = ((0, 0), ((3+sqrt(3)) * h, (3+sqrt(3)) * k),
+                 (-(3+sqrt(3)) * k, (3+sqrt(3)) * (h + k)))
 
     hex_corner_offset = ((2, -1), (1, 1), (-1, 2), (-2, 1), (-1, -1), (1, -2))
-    tri_corner_offset = ((sqrt(3), -sqrt(3)), (sqrt(3), 0), (0, sqrt(3)), (-sqrt(3), sqrt(3)), (-sqrt(3), 0), (0, -sqrt(3)))
+    tri_corner_offset = ((sqrt(3), -sqrt(3)), (sqrt(3), 0), (0, sqrt(3)),
+                         (-sqrt(3), sqrt(3)), (-sqrt(3), 0), (0, -sqrt(3)))
     kmax = max(k, h + k)
     triangles2d = []
     hex_edges = []
@@ -229,11 +274,13 @@ def hk_triangle_rhomb(h, k):
                 h1t, k1t = tri_corner_offset[c]
                 h2o, k2o = hex_corner_offset[(c + 1) % 6]
                 h2t, k2t = tri_corner_offset[(c + 1) % 6]
-                tri = (((3+sqrt(3)) * h0, (3+sqrt(3)) * k0), ((3+sqrt(3)) * h0 + h1o, (3+sqrt(3)) * k0 + k1o), ((3+sqrt(3)) * h0 + h2o, (3+sqrt(3)) * k0 + k2o))
+                tri = (((3+sqrt(3)) * h0, (3+sqrt(3)) * k0), ((3+sqrt(3)) * h0 + h1o,
+                       (3+sqrt(3)) * k0 + k1o), ((3+sqrt(3)) * h0 + h2o, (3+sqrt(3)) * k0 + k2o))
                 ti, he = triangle_intersection(tri, corners2d, 2)
                 triangles2d.extend(ti)
                 hex_edges.extend(he)
-                tri = (((3+sqrt(3)) * h0 + h1o, (3+sqrt(3)) * k0 + k1o), ((3+sqrt(3)) * h0 + h1o + h1t, (3+sqrt(3)) * k0 + k1o + k1t), ((3+sqrt(3)) * h0 + h1o + h2t, (3+sqrt(3)) * k0 + k1o + k2t))
+                tri = (((3+sqrt(3)) * h0 + h1o, (3+sqrt(3)) * k0 + k1o), ((3+sqrt(3)) * h0 + h1o + h1t,
+                       (3+sqrt(3)) * k0 + k1o + k1t), ((3+sqrt(3)) * h0 + h1o + h2t, (3+sqrt(3)) * k0 + k1o + k2t))
                 ti, he = triangle_intersection(tri, corners2d, 1)
                 triangles2d.extend(ti)
                 hex_edges.extend(he)
@@ -260,11 +307,13 @@ def hk_triangle_rhomb_dual(h, k):
                 h1o, k1o = hex_corner_offset[c]
                 h1t, k1t = tri_corner_offset[c]
                 h2o, k2o = hex_corner_offset[(c + 1) % 6]
-                tri = ((6 * h0, 6 * k0), (6 * h0 + h1o, 6 * k0 + k1o), (6 * h0 + h2o, 6 * k0 + k2o))
+                tri = ((6 * h0, 6 * k0), (6 * h0 + h1o, 6 * k0 + k1o),
+                       (6 * h0 + h2o, 6 * k0 + k2o))
                 ti, he = triangle_intersection(tri, corners2d, 1)
                 triangles2d.extend(ti)
                 hex_edges.extend(he)
-                tri = ((6 * h0 + h1o, 6 * k0 + k1o), (6 * h0 + h2o, 6 * k0 + k2o), (6 * h0 + h1o + h1t, 6 * k0 + k1o + k1t))
+                tri = ((6 * h0 + h1o, 6 * k0 + k1o), (6 * h0 + h2o, 6 *
+                       k0 + k2o), (6 * h0 + h1o + h1t, 6 * k0 + k1o + k1t))
                 ti, he = triangle_intersection(tri, corners2d, 2)
                 triangles2d.extend(ti)
                 hex_edges.extend(he)
@@ -289,7 +338,8 @@ def hk_triangle(h, k):
             for c in range(6):
                 h1o, k1o = hex_corner_offset[c]
                 h2o, k2o = hex_corner_offset[(c + 1) % 6]
-                tri = ((3 * h0, 3 * k0), (3 * h0 + h1o, 3 * k0 + k1o), (3 * h0 + h2o, 3 * k0 + k2o))
+                tri = ((3 * h0, 3 * k0), (3 * h0 + h1o, 3 * k0 + k1o),
+                       (3 * h0 + h2o, 3 * k0 + k2o))
                 ti, he = triangle_intersection(tri, corners2d, 2)
                 triangles2d.extend(ti)
                 hex_edges.extend(he)
@@ -314,7 +364,8 @@ def hk_triangle_dual(h, k):
             for c in range(6):
                 h1o, k1o = hex_corner_offset[c]
                 h2o, k2o = hex_corner_offset[(c + 1) % 6]
-                tri = ((3 * h0, 3 * k0), (3 * h0 + h1o, 3 * k0 + k1o), (3 * h0 + h2o, 3 * k0 + k2o))
+                tri = ((3 * h0, 3 * k0), (3 * h0 + h1o, 3 * k0 + k1o),
+                       (3 * h0 + h2o, 3 * k0 + k2o))
                 ti, he = triangle_intersection(tri, corners2d, 2)
                 triangles2d.extend(ti)
                 hex_edges.extend(he)
@@ -339,7 +390,8 @@ def hk_triangle_trihex_dual(h, k):
             for c in range(6):
                 h1o, k1o = hex_corner_offset[c]
                 h2o, k2o = hex_corner_offset[(c + 1) % 6]
-                tri = ((3 * h0, 3 * k0), (3 * h0 + h1o, 3 * k0 + k1o), (3 * h0 + h2o, 3 * k0 + k2o))
+                tri = ((3 * h0, 3 * k0), (3 * h0 + h1o, 3 * k0 + k1o),
+                       (3 * h0 + h2o, 3 * k0 + k2o))
                 ti, he = triangle_intersection(tri, corners2d, 1)
                 triangles2d.extend(ti)
                 hex_edges.extend(he)
@@ -374,7 +426,8 @@ def hk_triangle_trihex(h, k):
             for c in range(6):
                 h1o, k1o = hex_corner_offset[c]
                 h2o, k2o = hex_corner_offset[(c + 1) % 6]
-                tri = ((2 * h0, 2 * k0), (2 * h0 + h1o, 2 * k0 + k1o), (2 * h0 + h2o, 2 * k0 + k2o))
+                tri = ((2 * h0, 2 * k0), (2 * h0 + h1o, 2 * k0 + k1o),
+                       (2 * h0 + h2o, 2 * k0 + k2o))
                 ti, he = triangle_intersection(tri, corners2d, 2)
                 triangles2d.extend(ti)
                 hex_edges.extend(he)
@@ -392,7 +445,8 @@ def triangle_intersection(t1, t2, edge_mask):
     interior_vertices = []
     exterior_vertices = []
     boundary_vertices = []
-    locations = {-1: exterior_vertices, 0: boundary_vertices, 1: interior_vertices}
+    locations = {-1: exterior_vertices,
+                 0: boundary_vertices, 1: interior_vertices}
     for k in range(3):
         loc = vertex_in_triangle(t1[k], t2)
         locations[loc].append(k)
@@ -597,7 +651,8 @@ def surface_geometry(triangles, tolerance=1e-5):
             unique.append(varray[v])
 
     uvarray = array(unique, floatc)
-    tlist = [(uindex[3 * t], uindex[3 * t + 1], uindex[3 * t + 2]) for t in range(len(triangles))]
+    tlist = [(uindex[3 * t], uindex[3 * t + 1], uindex[3 * t + 2])
+             for t in range(len(triangles))]
     tarray = array(tlist, intc)
 
     return uvarray, tarray

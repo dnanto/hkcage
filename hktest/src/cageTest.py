@@ -29,8 +29,8 @@ def show_hk_lattice(session, h, k, radius, orientation='222',
     varray = []
     tarray = []
     nth = 0
-    for i in range(-h, k + 1):  # row
-        for j in range(h + k + 1):  # col
+    for j in range(-h, k + 1):  # row
+        for i in range(h + k + 1):  # col
             p = (b @ np.array([i, j])).A1
             varray.append([*p, 0])
             varray.append([*(p + np.array([0, R])), 0])

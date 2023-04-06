@@ -40,7 +40,10 @@ def show_hk_lattice(session, h, k, radius, orientation='222',
 
     xy_vertexes = (origin, Ct, Ctp)
     hk_vertexes = {(0, 0), (h + k, -h), (h, k)}
+    hk_points = [np.array(ele) for ele in hk_vertexes]
+    slopes = [slope(*ele) for ele in iter_ring(xy_vertexes)]
     print(hk_vertexes)
+    print("slopes", slopes)
 
     varray = []
     tarray = []
@@ -71,25 +74,29 @@ def show_hk_lattice(session, h, k, radius, orientation='222',
                             cuts.append(ip)
                 assert len(cuts) <= 2
                 len(cuts) < 2 and cuts.clear()
-                xy_corners.extend(cuts)
             # triangulate
             # ## proceed if hex has a corner in the facet
             if xy_corners:
                 # ## update triangulation point and sort corners around it
-                if (i, j) not in hk_vertexes and cuts:
+                if cuts:
+                    xy_corners.extend(cuts)
                     p = np.mean(xy_corners, axis=0)
                     xy_corners.sort(
                         key=lambda q: np.arctan2(q[1] - p[1], q[0] - p[0])
                     )
                 varray.append(p)
                 varray.extend(xy_corners)
-                # TODO: "fix me please, thanks" - mask
-                mask = 7 if (i, j) in hk_vertexes else 2
-                for v1, v2 in iter_ring(range(nth + 1, nth + len(xy_corners) + 1)):
-                    tarray.append((nth, v1, v2))
+                for idx, ele in enumerate(iter_ring(range(nth + 1, nth + len(xy_corners) + 1))):
+                    mask = 0 if (i, j) in hk_vertexes else 2
+                    for p, q in iter_ring(xy_vertexes):
+                        print("hey1", p, q, xy_corners[idx])
+                        print("hey2", p, q, xy_corners[(
+                            idx+1) % len(xy_corners)])
+                        if on_segment(p, q, xy_corners[idx]) and on_segment(p, q, xy_corners[(idx+1) % len(xy_corners)]):
+                            mask = 0
+                    tarray.append((nth, *ele))
                     earray.append(mask)
                 nth += len(xy_corners) + 1
-            # print(i, j)
 
     varray = [(*ele, 0) for ele in varray]
     varray = np.array(varray)
@@ -97,7 +104,7 @@ def show_hk_lattice(session, h, k, radius, orientation='222',
 
     assert len(varray) == max(*tarray[-1]) + 1
 
-    hex_edges = earray  # np.array([2] * len(tarray), np.intc)
+    hex_edges = earray
     print("varray", varray, "tarray", tarray, "hex_edges",
           hex_edges, sep="\n", file=sys.stderr)
 
@@ -130,6 +137,19 @@ def show_hk_lattice(session, h, k, radius, orientation='222',
     model.hkcage = True
 
     return model
+
+
+def on_segment(a, b, c):
+    print(">", np.linalg.norm(a-c) + np.linalg.norm(b-c), np.linalg.norm(a - b))
+    return np.isclose(np.linalg.norm(a-c) + np.linalg.norm(b-c), np.linalg.norm(a - b))
+
+
+def slope(p, q):
+    return (q[1] - p[1]) / (q[0] - p[1])
+
+
+def line_point_dist(p1, p2, p3):
+    return np.linalg.norm(np.cross(p2-p1, p1-p3)) / np.linalg.norm(p2-p1)
 
 
 def triangle_area(p, q, r):

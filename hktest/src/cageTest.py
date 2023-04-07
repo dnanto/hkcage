@@ -11,23 +11,67 @@ import sys
 import numpy as np
 
 
-def show_hk_lattice(session, h, k, radius, orientation='222',
-                    color=(255, 255, 255, 255), sphere_factor=0,
-                    edge_radius=None, mesh=False, replace=True, alpha=1):
+def show_hk_lattice(session, h, k, H, K, radius, color=(255, 0, 255, 255), replace=True):
 
-    name = 'Icosahedron h = %d, k = %d' % (h, k)
+    name = f"Icosahedron h = {h}, k = {k}, H = {H}, K = {K}"
 
-    R = 1
-    r = R * np.sqrt(3.0)/2.0
+    v, t, e = list(map(np.array, hk_facet(h, k, H, K, 1)))
+    v2, t2, e2 = list(map(np.array, hk_facet(h, k, H, K, 2)))
+    v3, t3, e3 = list(map(np.array, hk_facet(h, k, H, K, 3)))
+
+    from chimerax.core.models import Surface
+    # sm = Surface(name, session)
+    sm = Surface(name + " (1)", session)
+    sm.set_geometry(v, None, t)
+    sm.edge_mask = e
+    sm.color = color
+    sm.display_style = sm.Mesh
+    sm2 = Surface(name + " (2)", session)
+    sm2.set_geometry(v2, None, t2)
+    sm2.edge_mask = e2
+    sm2.color = color
+    sm2.display_style = sm.Mesh
+    sm3 = Surface(name + " (3)", session)
+    sm3.set_geometry(v3, None, t3)
+    sm3.edge_mask = e3
+    sm3.color = color
+    sm3.display_style = sm.Mesh
+    edge_radius = .01 * radius
+    mset = _cage_markers(session, name) if replace else None
+    from chimerax.markers.cmd import markers_from_mesh
+    model = markers_from_mesh(
+        session,
+        [sm, sm2, sm3],
+        color=color,
+        edge_radius=edge_radius,
+        markers=mset
+    )
+    model.name = name
+    if mset:
+        mset._prev_markers.delete()
+
+    model.hkcage = True
+
+    return model
+
+
+def hk_facet(h, k, H=1, K=1, t=1, R=1):
+    r = R * np.sqrt(3.0) / 2.0
     b = np.matrix(((2.0 * r, 1.0 * r), (0.0 * R, 1.5 * R)))
 
     hv = (h * b[:, 0])
     kv = (k * rotmat(60).dot(b[:, 0]))
+    HV = (H * rotmat(60).dot(b[:, 0]))
+    KV = (K * rotmat(120).dot(b[:, 0]))
     origin = np.array((0, 0))
-    Ct = (hv + kv)
-    Ctp = rotmat(60).T.dot(Ct)
+
+    Ct = hv + kv
+    CT = rotmat(60).T.dot(Ct)
+    CTT = rotmat(-120).T.dot(Ct)
     Ct = Ct.A1
-    Ctp = Ctp.A1
+    CT = CT.A1
+    CTT = CTT.A1
+    CQ = (HV + KV).A1
 
     corners = (
         np.array([0, R]),
@@ -38,20 +82,36 @@ def show_hk_lattice(session, h, k, radius, orientation='222',
         np.array([-r, R / 2]),
     )
 
-    xy_vertexes = (origin, Ct, Ctp)
-    hk_vertexes = {(0, 0), (h + k, -h), (h, k)}
-    hk_points = [np.array(ele) for ele in hk_vertexes]
-    slopes = [slope(*ele) for ele in iter_ring(xy_vertexes)]
-    print(hk_vertexes)
-    print("slopes", slopes)
+    if t == 1:
+        xy_vertexes = (origin, Ct, CT)
+        hk_vertexes = {(0, 0), (h + k, -h), (h, k)}
+        j_range = range(-h, k + 1)
+        i_range = range(h + k + 1)
+    elif t == 2:
+        xy_vertexes = (origin, CQ, Ct)
+        hk_vertexes = {(0, 0), (-K, H + K), (h, k)}
+        j_range = range(-h, max(k, H + K) + 1)
+        i_range = range(-K, h + 1)
+    elif t == 3:
+        xy_vertexes = (origin, CTT, CQ)
+        hk_vertexes = {(0, 0), (-(h + k), h), (-K, H + K)}
+        print(h, k, H, K)
+        print(xy_vertexes)
+        print(hk_vertexes)
+        print("j_range", 0, max(h, H + K)+1)
+        print("i_range", -(h + k), 0 + 1)
+        j_range = range(max(h, H + K) + 1)
+        i_range = range(-(h + k), 0 + 1)
+    else:
+        raise ValueError("t not in {1, 2, 3}")
 
     varray = []
     tarray = []
     earray = []
     nth = 0
 
-    for j in range(-h, k + 1):  # row
-        for i in range(h + k + 1):  # col
+    for j in j_range:  # row
+        for i in i_range:  # col
             # calculate hexagonal lattice position
             p = (b @ np.array([i, j])).A1
             # update hex corners
@@ -64,15 +124,15 @@ def show_hk_lattice(session, h, k, radius, orientation='222',
             ]
             # add new corners based on facet edge intersection
             cuts = []
-            # ## ignore case where line intersects exactly at both corners
             # ## ignore case where hexagon is completely within the facet
-            if h != k and len(xy_corners) < 6:
+            if len(xy_corners) < 6:
                 for c1, c2 in iter_ring(p_corners):
                     for v1, v2 in iter_ring(xy_vertexes):
                         ip = np.array(intersection(*c1, *c2, *v1, *v2))
                         if ip.size > 0 and (not cuts or not any(zeroish(np.linalg.norm(ip - ele)) for ele in cuts)):
                             cuts.append(ip)
-                assert len(cuts) <= 2
+                # print("[(*cuts]")
+                # print(*cuts, sep="\n")
                 len(cuts) < 2 and cuts.clear()
             # triangulate
             # ## proceed if hex has a corner in the facet
@@ -89,9 +149,6 @@ def show_hk_lattice(session, h, k, radius, orientation='222',
                 for idx, ele in enumerate(iter_ring(range(nth + 1, nth + len(xy_corners) + 1))):
                     mask = 0 if (i, j) in hk_vertexes else 2
                     for p, q in iter_ring(xy_vertexes):
-                        print("hey1", p, q, xy_corners[idx])
-                        print("hey2", p, q, xy_corners[(
-                            idx+1) % len(xy_corners)])
                         if on_segment(p, q, xy_corners[idx]) and on_segment(p, q, xy_corners[(idx+1) % len(xy_corners)]):
                             mask = 0
                     tarray.append((nth, *ele))
@@ -99,57 +156,14 @@ def show_hk_lattice(session, h, k, radius, orientation='222',
                 nth += len(xy_corners) + 1
 
     varray = [(*ele, 0) for ele in varray]
-    varray = np.array(varray)
-    tarray = np.array(tarray)
 
     assert len(varray) == max(*tarray[-1]) + 1
 
-    hex_edges = earray
-    print("varray", varray, "tarray", tarray, "hex_edges",
-          hex_edges, sep="\n", file=sys.stderr)
-
-    if mesh:
-        model = sm = _cage_surface(session, name, replace)
-        sm.set_geometry(varray, None, tarray)
-        sm.color = color
-        sm.display_style = sm.Mesh
-        sm.edge_mask = hex_edges  # Hide spokes of hexagons.
-        if sm.id is None:
-            session.models.add([sm])
-    else:
-        # Make cage from markers.
-        from chimerax.core.models import Surface
-        sm = Surface(name, session)
-        sm.set_geometry(varray, None, tarray)
-        sm.color = color
-        sm.display_style = sm.Mesh
-        sm.edge_mask = hex_edges  # Hide spokes of hexagons.
-        if edge_radius is None:
-            edge_radius = .01 * radius
-        mset = _cage_markers(session, name) if replace else None
-        from chimerax.markers.cmd import markers_from_mesh
-        model = markers_from_mesh(session, [sm], color=color,
-                                  edge_radius=edge_radius, markers=mset)
-        model.name = name
-        if mset:
-            mset._prev_markers.delete()
-
-    model.hkcage = True
-
-    return model
+    return varray, tarray, earray
 
 
 def on_segment(a, b, c):
-    print(">", np.linalg.norm(a-c) + np.linalg.norm(b-c), np.linalg.norm(a - b))
     return np.isclose(np.linalg.norm(a-c) + np.linalg.norm(b-c), np.linalg.norm(a - b))
-
-
-def slope(p, q):
-    return (q[1] - p[1]) / (q[0] - p[1])
-
-
-def line_point_dist(p1, p2, p3):
-    return np.linalg.norm(np.cross(p2-p1, p1-p3)) / np.linalg.norm(p2-p1)
 
 
 def triangle_area(p, q, r):
@@ -204,10 +218,6 @@ def rotmat(deg):
     return np.array([[np.cos(th), -np.sin(th)], [np.sin(th), np.cos(th)]])
 
 
-# -----------------------------------------------------------------------------
-#
-
-
 def _cage_markers(session, name):
     from chimerax.markers import MarkerSet
     mlist = [m for m in session.models.list(type=MarkerSet)
@@ -221,8 +231,6 @@ def _cage_markers(session, name):
     return None
 
 
-# -----------------------------------------------------------------------------
-#
 def _cage_surface(session, name, replace):
     # Make new surface model or find an existing one.
     sm = None

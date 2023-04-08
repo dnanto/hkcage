@@ -1,5 +1,3 @@
-# vim: set expandtab ts=4 sw=4:
-
 # === UCSF ChimeraX Copyright ===
 # Copyright 2016 Regents of the University of California.
 # All rights reserved.  This software provided pursuant to a
@@ -13,11 +11,13 @@
 
 from chimerax.core.toolshed import BundleAPI
 
+
 class _HKCageTestAPI(BundleAPI):
 
     @staticmethod
     def register_command(command_name, logger):
         from . import cmd
         cmd.register_hkcagetest_command(logger)
+
 
 bundle_api = _HKCageTestAPI()

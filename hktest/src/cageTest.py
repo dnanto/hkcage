@@ -1,26 +1,20 @@
-# -----------------------------------------------------------------------------
-# Produce hexagonal lattices on an icosahedron.  The hexagons are bent where
-# they cross the edges of the icosahedron.
-#
-# These lattices are described at
-#
-#       http://viperdb.scripps.edu/icos_server.php?icspage=paradigm
-
 import sys
 
 import numpy as np
+from functools import partial
+
+from chimerax.core.models import Surface
+from chimerax.markers.cmd import markers_from_mesh
 
 
-def show_hk_lattice(session, h, k, H, K, radius, color=(255, 0, 255, 255), replace=True):
+def show_hk_lattice(session, h, k, H, K, edge_radius, color=(255, 0, 255, 255), replace=True):
 
-    name = f"Icosahedron h = {h}, k = {k}, H = {H}, K = {K}"
+    name = f"Icosahedron({h}, {k}, {H}, {K})"
 
     v, t, e = list(map(np.array, hk_facet(h, k, H, K, 1)))
     v2, t2, e2 = list(map(np.array, hk_facet(h, k, H, K, 2)))
     v3, t3, e3 = list(map(np.array, hk_facet(h, k, H, K, 3)))
 
-    from chimerax.core.models import Surface
-    # sm = Surface(name, session)
     sm = Surface(name + " (1)", session)
     sm.set_geometry(v, None, t)
     sm.edge_mask = e
@@ -36,9 +30,7 @@ def show_hk_lattice(session, h, k, H, K, radius, color=(255, 0, 255, 255), repla
     sm3.edge_mask = e3
     sm3.color = color
     sm3.display_style = sm.Mesh
-    edge_radius = .01 * radius
     mset = _cage_markers(session, name) if replace else None
-    from chimerax.markers.cmd import markers_from_mesh
     model = markers_from_mesh(
         session,
         [sm, sm2, sm3],
@@ -95,11 +87,6 @@ def hk_facet(h, k, H=1, K=1, t=1, R=1):
     elif t == 3:
         xy_vertexes = (origin, CTT, CQ)
         hk_vertexes = {(0, 0), (-(h + k), h), (-K, H + K)}
-        print(h, k, H, K)
-        print(xy_vertexes)
-        print(hk_vertexes)
-        print("j_range", 0, max(h, H + K)+1)
-        print("i_range", -(h + k), 0 + 1)
         j_range = range(max(h, H + K) + 1)
         i_range = range(-(h + k), 0 + 1)
     else:
@@ -112,6 +99,7 @@ def hk_facet(h, k, H=1, K=1, t=1, R=1):
 
     for j in j_range:  # row
         for i in i_range:  # col
+            print(f"coor {(i, j)}")
             # calculate hexagonal lattice position
             p = (b @ np.array([i, j])).A1
             # update hex corners
@@ -124,33 +112,28 @@ def hk_facet(h, k, H=1, K=1, t=1, R=1):
             ]
             # add new corners based on facet edge intersection
             cuts = []
-            # ## ignore case where hexagon is completely within the facet
-            if len(xy_corners) < 6:
-                for c1, c2 in iter_ring(p_corners):
-                    for v1, v2 in iter_ring(xy_vertexes):
-                        ip = np.array(intersection(*c1, *c2, *v1, *v2))
-                        if ip.size > 0 and (not cuts or not any(zeroish(np.linalg.norm(ip - ele)) for ele in cuts)):
-                            cuts.append(ip)
-                # print("[(*cuts]")
-                # print(*cuts, sep="\n")
-                len(cuts) < 2 and cuts.clear()
+            for c1, c2 in iter_ring(p_corners):
+                for v1, v2 in iter_ring(xy_vertexes):
+                    ip = np.array(intersection(*c1, *c2, *v1, *v2))
+                    if ip.size > 0 and (not any(zeroish(np.linalg.norm(ip - ele)) for ele in (c1, c2))):
+                        cuts.append(MeshPoint(ip, info=True))
+
+            cuts = [ele for ele in cuts if not any(
+                zeroish(np.linalg.norm(c1 - ele)) for c1 in xy_corners)]
+            xy_corners.extend(cuts)
             # triangulate
             # ## proceed if hex has a corner in the facet
-            if xy_corners:
-                # ## update triangulation point and sort corners around it
-                if cuts:
-                    xy_corners.extend(cuts)
-                    p = np.mean(xy_corners, axis=0)
-                    xy_corners.sort(
-                        key=lambda q: np.arctan2(q[1] - p[1], q[0] - p[0])
-                    )
+            if len(xy_corners) > 1:
+                if (i, j) in hk_vertexes:
+                    xy_corners.append(p)
+                p = np.mean(xy_corners, axis=0)
+                xy_corners.sort(key=partial(sort_ccw, p))
                 varray.append(p)
                 varray.extend(xy_corners)
                 for idx, ele in enumerate(iter_ring(range(nth + 1, nth + len(xy_corners) + 1))):
-                    mask = 0 if (i, j) in hk_vertexes else 2
-                    for p, q in iter_ring(xy_vertexes):
-                        if on_segment(p, q, xy_corners[idx]) and on_segment(p, q, xy_corners[(idx+1) % len(xy_corners)]):
-                            mask = 0
+                    c1 = xy_corners[idx],
+                    c2 = xy_corners[(idx+1) % len(xy_corners)]
+                    mask = 2
                     tarray.append((nth, *ele))
                     earray.append(mask)
                 nth += len(xy_corners) + 1
@@ -160,6 +143,22 @@ def hk_facet(h, k, H=1, K=1, t=1, R=1):
     assert len(varray) == max(*tarray[-1]) + 1
 
     return varray, tarray, earray
+
+
+class MeshPoint(np.ndarray):
+
+    def __new__(cls, input_array, info=None):
+        obj = np.asarray(input_array).view(cls)
+        obj.info = info
+        return obj
+
+    def __array_finalize__(self, obj):
+        if obj is not None:
+            self.info = getattr(obj, 'info', None)
+
+
+def sort_ccw(p, c):
+    return np.arctan2(p[1] - c[1], p[0] - c[0])
 
 
 def on_segment(a, b, c):
@@ -175,13 +174,12 @@ def triangle_area(p, q, r):
 def in_triangle(p, q1, q2, q3):
     return np.isclose(
         triangle_area(q1, q2, q3),
-        np.sum(triangle_area(p, *ele) for ele in iter_ring((q1, q2, q3))),
-        atol=np.finfo(np.float32).eps
+        np.sum(triangle_area(p, *ele) for ele in iter_ring((q1, q2, q3)))
     )
 
 
 def zeroish(value):
-    return np.isclose(value, 0, atol=np.finfo(np.float32).eps, rtol=0)
+    return np.isclose(value, 0)
 
 
 def intersection(x1, y1, x2, y2, x3, y3, x4, y4):

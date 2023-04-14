@@ -1,3 +1,4 @@
+from chimerax.geometry import Place
 import sys
 
 import numpy as np
@@ -10,30 +11,32 @@ from chimerax.markers.cmd import markers_from_mesh
 def show_hk_lattice(session, h, k, H, K, edge_radius, color=(255, 0, 255, 255), replace=True):
 
     name = f"Icosahedron({h}, {k}, {H}, {K})"
+    # v -> points
+    # t -> connectivity
+    # e -> edge masking
+    c1, v1, t1, e1 = list(map(np.array, hk_facet(h, k, H, K, 1)))
+    # c2, v2, t2, e2 = list(map(np.array, hk_facet(h, k, H, K, 2)))
+    # c3, v3, t3, e3 = list(map(np.array, hk_facet(h, k, H, K, 3)))
 
-    v, t, e = list(map(np.array, hk_facet(h, k, H, K, 1)))
-    v2, t2, e2 = list(map(np.array, hk_facet(h, k, H, K, 2)))
-    v3, t3, e3 = list(map(np.array, hk_facet(h, k, H, K, 3)))
+    fp, ft = icosahedron_geometry_5(h, k, H, K)
+    surfaces = []
+    for idx, ele in enumerate(ft, start=1):
+        A = np.array([(*ele, 1) for ele in c1])
+        B = np.array([fp[i] for i in ele])
 
-    sm = Surface(name + " (1)", session)
-    sm.set_geometry(v, None, t)
-    sm.edge_mask = e
-    sm.color = color
-    sm.display_style = sm.Mesh
-    sm2 = Surface(name + " (2)", session)
-    sm2.set_geometry(v2, None, t2)
-    sm2.edge_mask = e2
-    sm2.color = color
-    sm2.display_style = sm.Mesh
-    sm3 = Surface(name + " (3)", session)
-    sm3.set_geometry(v3, None, t3)
-    sm3.edge_mask = e3
-    sm3.color = color
-    sm3.display_style = sm.Mesh
+        R, c, t = kabsch_umeyama(B, A)
+        v = np.array([t + c * R @ ele for ele in v1])
+
+        sm = Surface(f"facet-{idx}", session)
+        sm.set_geometry(v, None, t1)
+        sm.edge_mask = e1
+        sm.display_style = sm.Mesh
+        surfaces.append(sm)
+
     mset = _cage_markers(session, name) if replace else None
     model = markers_from_mesh(
         session,
-        [sm, sm2, sm3],
+        surfaces,
         color=color,
         edge_radius=edge_radius,
         markers=mset
@@ -45,6 +48,28 @@ def show_hk_lattice(session, h, k, H, K, edge_radius, color=(255, 0, 255, 255), 
     model.hkcage = True
 
     return model
+
+
+def kabsch_umeyama(A, B):
+    # https://zpl.fi/aligning-point-patterns-with-kabsch-umeyama-algorithm/
+
+    assert A.shape == B.shape
+    n, m = A.shape
+
+    EA = np.mean(A, axis=0)
+    EB = np.mean(B, axis=0)
+    VarA = np.mean(np.linalg.norm(A - EA, axis=1) ** 2)
+
+    H = ((A - EA).T @ (B - EB)) / n
+    U, D, VT = np.linalg.svd(H)
+    d = np.sign(np.linalg.det(U) * np.linalg.det(VT))
+    S = np.diag([1] * (m - 1) + [d])
+
+    R = U @ S @ VT
+    c = VarA / np.trace(np.diag(D) @ S)
+    t = EA - c * R @ EB
+
+    return R, c, t
 
 
 def hk_facet(h, k, H=1, K=1, t=1, R=1):
@@ -99,7 +124,6 @@ def hk_facet(h, k, H=1, K=1, t=1, R=1):
 
     for j in j_range:  # row
         for i in i_range:  # col
-            print(f"coor {(i, j)}")
             # calculate hexagonal lattice position
             p = (b @ np.array([i, j])).A1
             # update hex corners
@@ -138,11 +162,11 @@ def hk_facet(h, k, H=1, K=1, t=1, R=1):
                     earray.append(mask)
                 nth += len(xy_corners) + 1
 
-    varray = [(*ele, 0) for ele in varray]
+    varray = [(*ele, 1) for ele in varray]
 
     assert len(varray) == max(*tarray[-1]) + 1
 
-    return varray, tarray, earray
+    return xy_vertexes, varray, tarray, earray
 
 
 class MeshPoint(np.ndarray):
@@ -214,6 +238,157 @@ def iter_ring(container):
 def rotmat(deg):
     th = np.deg2rad(deg)
     return np.array([[np.cos(th), -np.sin(th)], [np.sin(th), np.cos(th)]])
+
+
+def rot2(theta):
+    cos_theta, sin_theta = np.cos(theta), np.sin(theta)
+    return np.array(
+        [
+            [cos_theta, sin_theta],
+            [sin_theta, cos_theta]
+        ]
+    )
+
+
+def rot3_x(theta):
+    cos_theta, sin_theta = np.cos(theta), np.sin(theta)
+    return np.array(
+        [
+            [1, 0, 0, 0],
+            [0, cos_theta, -sin_theta, 0],
+            [0, sin_theta, cos_theta, 0]
+        ]
+    )
+
+
+def rot3_y(theta):
+    cos_theta, sin_theta = np.cos(theta), np.sin(theta)
+    return np.array(
+        [
+            [cos_theta, 0, sin_theta, 0],
+            [0, 1, 0, 0],
+            [-sin_theta, 0, cos_theta, 0],
+        ]
+    )
+
+
+def rot3_z(theta):
+    cos_theta, sin_theta = np.cos(theta), np.sin(theta)
+    return np.array(
+        [
+            [cos_theta, -sin_theta, 0, 0],
+            [sin_theta, cos_theta, 0, 0],
+            [0, 0, 1, 0]
+        ]
+    )
+
+
+def rot_rodrigues(v, k, t):
+    # https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula
+    return v * np.cos(t) + np.cross(k, v) * np.sin(t) + np.dot(k, np.dot(k, v)) * (1 - np.cos(t))
+
+
+def bisection(f, a, b, tol, iter):
+    for _ in range(iter):
+        c = (a + b) / 2
+        f_of_c = f(c)
+        if f_of_c == 0 or (b - a) / 2 < tol:
+            return c
+        if np.sign(f_of_c) == np.sign(f(a)):
+            a = c
+        else:
+            b = c
+
+
+def brackets(f, a, b, iter):
+    frac = b / iter
+    prev = np.sign(f(a))
+    for i in range(iter):
+        x = a + i * frac
+        curr = np.sign(f(x))
+        if prev != curr:
+            yield a + (i - 1) * frac, x
+            prev = curr
+
+
+def circle_cylinder_intersection(e, uxe, center, r_cir, r_cyl, iter=10000, tol=10**-15):
+    ux, uy, uz = e
+    vx, vy, vz = uxe
+    cx, cy, cz = center
+    def fy(t): return r_cir * uy * np.cos(t) + r_cir * vy * np.sin(t) + cy
+    def fx(t): return r_cir * ux * np.cos(t) + r_cir * vx * np.sin(t) + cx
+    def fz(t): return r_cir * uz * np.cos(t) + r_cir * vz * np.sin(t) + cz
+    def f(t): return r_cyl * r_cyl - (np.power(fx(t), 2) + np.power(fz(t), 2))
+    yield from (
+        np.array((fx(t), fy(t), fz(t)))
+        for t in (
+            bisection(f, a, b, tol=tol, iter=iter)
+            for a, b in brackets(f, 0, 2 * np.pi, iter=iter)
+        )
+        if t
+    )
+
+
+def icosahedron_geometry_5(h, k, H, K):
+    """Calculate vertex coordinates and connectivity of icosahedron with 5-fold symmetry.
+    @see: https://www.geogebra.org/3d/ebt6eb7f
+    """
+    from numpy import arccos, arctan2, array, dot, pi, radians, sqrt, vstack
+    from numpy.linalg import norm
+
+    b = np.array((1, 0))
+    Ct = h * b + k * dot(rot2(np.radians(60)), b)
+    Cq = H * np.dot(rot2(np.radians(60)), b) + K * \
+        np.dot(rot2(np.radians(120)), b)
+
+    phi = (1 + np.sqrt(5)) / 2.0
+    b = 0.5
+    a = phi * b
+    ivarray = np.array((
+        (0, b, -a),     # A
+        (-b, a, 0),     # B
+        (b, a, 0),      # C
+        (a, 0, -b),     # D
+        (0, -b, -a),    # E
+        (-a, 0, -b),    # F
+    ))
+    theta = np.pi / 2 - np.arctan2((1 / (2 * phi)), 0.5)
+    ivarray = Place(matrix=rot3_x(theta)).transform_points(ivarray)
+
+    s = np.linalg.norm(Cq) / np.linalg.norm(Ct)
+    alpha = np.arccos(
+        np.dot(Ct, Cq) / (np.linalg.norm(Ct) * np.linalg.norm(Cq)))
+    v1 = ivarray[1]  # B
+    tv = v1 + Place(matrix=rot3_z(-alpha)
+                    ).transform_vector(s * np.array([1, 0, 0]))
+
+    r1 = np.linalg.norm(v1 - np.array((0, v1[1], 0)))
+    r2 = v1[1] - tv[1]
+    v6z = np.sqrt(r1 * r1 - tv[0] * tv[0])
+    v6 = np.array((tv[0], v1[1] - np.sqrt(-(v1[2] * v1[2]) + 2 *
+                                          v1[2] * v6z + r2 * r2 - v6z * v6z), v6z))  # G
+
+    placer = Place(matrix=rot3_y(np.radians(72)))
+    v7 = placer.transform_points(np.array([v6]))  # H
+    v8 = placer.transform_points(v7)           # I
+    v9 = placer.transform_points(v8)           # J
+    vA = placer.transform_points(v9)           # K
+
+    ivarray = np.vstack((ivarray, v6, v7[0], v8[0], v9[0], vA[0]))
+    ivarray -= np.array((0, (v1[1] + v6[1]) / 2, 0))
+    ivarray = np.vstack((ivarray, -ivarray[0]))   # L <- -A
+
+    # TODO: replace with numbers
+    from string import ascii_uppercase
+    itarray = (
+        "ABC", "ACD", "ADE", "AEF", "AFB",  # cap Δ
+        "LGH", "LHI", "LIJ", "LJK", "LKG",  # cap ∇
+        "BCG", "CDH", "DEI", "EFJ", "FBK",  # mid ∇
+        "HGC", "GKB", "KJF", "JIE", "IHD",  # mid Δ
+    )
+    itarray = tuple(tuple(map(ascii_uppercase.find, tri)) for tri in itarray)
+
+    return ivarray, itarray
 
 
 def _cage_markers(session, name):

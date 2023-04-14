@@ -11,25 +11,27 @@ from chimerax.markers.cmd import markers_from_mesh
 def show_hk_lattice(session, h, k, H, K, edge_radius, color=(255, 0, 255, 255), replace=True):
 
     name = f"Icosahedron({h}, {k}, {H}, {K})"
-    # v -> points
-    # t -> connectivity
-    # e -> edge masking
-    c1, v1, t1, e1 = list(map(np.array, hk_facet(h, k, H, K, 1)))
-    # c2, v2, t2, e2 = list(map(np.array, hk_facet(h, k, H, K, 2)))
-    # c3, v3, t3, e3 = list(map(np.array, hk_facet(h, k, H, K, 3)))
+
+    facets = [
+        list(map(np.array, hk_facet(h, k, H, K, i))) for i in range(1, 4)
+    ]
 
     fp, ft = icosahedron_geometry_5(h, k, H, K)
     surfaces = []
     for idx, ele in enumerate(ft, start=1):
-        A = np.array([(*ele, 1) for ele in c1])
-        B = np.array([fp[i] for i in ele])
+        tri, mode = ele
+
+        ic, iv, it, ie = facets[mode]
+
+        A = np.array([(*e, 1) for e in ic])
+        B = np.array([fp[i] for i in tri])
 
         R, c, t = kabsch_umeyama(B, A)
-        v = np.array([t + c * R @ ele for ele in v1])
+        v = np.array([t + c * R @ e for e in iv])
 
         sm = Surface(f"facet-{idx}", session)
-        sm.set_geometry(v, None, t1)
-        sm.edge_mask = e1
+        sm.set_geometry(v, None, it)
+        sm.edge_mask = ie
         sm.display_style = sm.Mesh
         surfaces.append(sm)
 
@@ -140,7 +142,7 @@ def hk_facet(h, k, H=1, K=1, t=1, R=1):
                 for v1, v2 in iter_ring(xy_vertexes):
                     ip = np.array(intersection(*c1, *c2, *v1, *v2))
                     if ip.size > 0 and (not any(zeroish(np.linalg.norm(ip - ele)) for ele in (c1, c2))):
-                        cuts.append(MeshPoint(ip, info=True))
+                        cuts.append(ip)
 
             cuts = [ele for ele in cuts if not any(
                 zeroish(np.linalg.norm(c1 - ele)) for c1 in xy_corners)]
@@ -167,18 +169,6 @@ def hk_facet(h, k, H=1, K=1, t=1, R=1):
     assert len(varray) == max(*tarray[-1]) + 1
 
     return xy_vertexes, varray, tarray, earray
-
-
-class MeshPoint(np.ndarray):
-
-    def __new__(cls, input_array, info=None):
-        obj = np.asarray(input_array).view(cls)
-        obj.info = info
-        return obj
-
-    def __array_finalize__(self, obj):
-        if obj is not None:
-            self.info = getattr(obj, 'info', None)
 
 
 def sort_ccw(p, c):
@@ -383,10 +373,14 @@ def icosahedron_geometry_5(h, k, H, K):
     itarray = (
         "ABC", "ACD", "ADE", "AEF", "AFB",  # cap Δ
         "LGH", "LHI", "LIJ", "LJK", "LKG",  # cap ∇
-        "BCG", "CDH", "DEI", "EFJ", "FBK",  # mid ∇
-        "HGC", "GKB", "KJF", "JIE", "IHD",  # mid Δ
+        "BGC", "CHD", "DIE", "EJF", "FKB",  # mid ∇
+        "HCG", "GBK", "KFJ", "JEI", "IDH",  # mid Δ
     )
     itarray = tuple(tuple(map(ascii_uppercase.find, tri)) for tri in itarray)
+    itarray = (
+        *((ele, 0) for ele in itarray[:10]),
+        *((ele, 1) for ele in itarray[10:])
+    )
 
     return ivarray, itarray
 

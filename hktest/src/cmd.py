@@ -12,9 +12,9 @@
 # === UCSF ChimeraX Copyright ===
 
 
-def hkcagetest(session, h, k, H=1, K=1, edge_radius=100.0, color=(255, 0, 255, 255), replace=True):
+def hkcagetest(session, h, k, H=1, K=1, symmetry=5, edge_radius=0.01, color=(255, 0, 255, 255), replace=True):
     from .cageTest import show_hk_lattice
-    show_hk_lattice(session, h, k, H, K, edge_radius, color, replace)
+    show_hk_lattice(session, h, k, H, K, symmetry, edge_radius, color, replace)
 
 
 def register_hkcagetest_command(logger):
@@ -28,6 +28,7 @@ def register_hkcagetest_command(logger):
         keyword=[
             ('H', NonNegativeIntArg),
             ('K', NonNegativeIntArg),
+            ('symmetry', NonNegativeIntArg),
             ('edge_radius', FloatArg),
             ('color', Color8Arg),
             ('replace', BoolArg)

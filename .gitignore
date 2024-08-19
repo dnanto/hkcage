@@ -1,0 +1,5 @@
+__pycache__
+.DS_Store
+hktest/ChimeraX_HKCageTest.egg-info
+hktest/build
+hktest/dist

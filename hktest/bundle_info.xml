@@ -7,7 +7,7 @@
   <URL>https://www.luquelab.com/</URL>
 
   <Synopsis>Create icosahedral mesh of various hexagons, pentagons, and triangles.</Synopsis>
-  <Description>Create icosahedral mesh of hexagons and pentagons using h and k lattice parameters with the trihexagonal lattice.</Description>
+  <Description>Create icosahedral mesh of hexagons and pentagons using h and k lattice parameters with the hexagonal lattice.</Description>
 
   <Categories>
     <Category name="Higher-Order Structure"/>
@@ -24,5 +24,9 @@
     <PythonClassifier>License :: Free for non-commercial use</PythonClassifier>
     <ChimeraXClassifier>Command :: hkcagetest :: Higher-Order Structure :: Create icosahedral cage trihex</ChimeraXClassifier>
   </Classifiers>
+
+  <AdditionalPackages>
+    <Package name="democapsid" folder="/Users/dnanto/GitHub/democapsid/py/src/democapsid"></Package>
+  </AdditionalPackages>
 
 </BundleInfo>

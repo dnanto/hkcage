@@ -13,35 +13,39 @@
 
 # -----------------------------------------------------------------------------
 #
-def hkcagetest(session, h, k, radius = 100.0, orientation = '222', color = (255,255,255,255),
-           sphere_factor = 0.0, edge_radius = None, mesh = False, replace = True, alpha = 1):
-
+def hkcagetest(session, h, k, H = 1, K = 1, symmetry = 5, radius = 1, tile="hex", color = (255, 255, 255, 255), sphere_factor = 0, edge_radius = None, mesh = False, replace = True):
     if h == 0 and k == 0:
         from chimerax.core.errors import UserError
         raise UserError('h and k must be positive, got %d %d' % (h,k))
 
     from .cageTest import show_hk_lattice
-    show_hk_lattice(session, h, k, radius, orientation, color, sphere_factor,
-                    edge_radius, mesh, replace, alpha)
+    show_hk_lattice(session, h, k, H, K, symmetry, radius, tile, color, sphere_factor, edge_radius, mesh, replace)
 
 # -----------------------------------------------------------------------------
 #
 def register_hkcagetest_command(logger):
-    from chimerax.core.commands import CmdDesc, register, NonNegativeIntArg, \
-                                       FloatArg, EnumOf, Color8Arg, BoolArg
-
+    from chimerax.core.commands import (BoolArg, CmdDesc, Color8Arg, EnumOf,
+                                        FloatArg, NonNegativeIntArg, StringArg,
+                                        register)
     from chimerax.geometry.icosahedron import coordinate_system_names
+
     desc = CmdDesc(
-        required = [('h', NonNegativeIntArg),
-                    ('k', NonNegativeIntArg)],
-        keyword = [('radius', FloatArg),
-                   ('orientation', EnumOf(coordinate_system_names)),
-                   ('color', Color8Arg),
-                   ('sphere_factor', FloatArg),
-                   ('edge_radius', FloatArg),
-                   ('mesh', BoolArg),
-                   ('replace', BoolArg),
-                   ('alpha', NonNegativeIntArg)],
-        synopsis = 'Create icosahedron mesh using one of four structures'
+        required = [
+            ('h', NonNegativeIntArg),
+            ('k', NonNegativeIntArg),
+            ('H', NonNegativeIntArg),
+            ('K', NonNegativeIntArg)
+        ],
+        keyword = [
+            ('symmetry', NonNegativeIntArg),
+            ('radius', FloatArg),
+            ('tile', StringArg),
+            ('color', Color8Arg),
+            ('sphere_factor', FloatArg),
+            ('edge_radius', FloatArg),
+            ('mesh', BoolArg),
+            ('replace', BoolArg)
+        ],
+        synopsis = 'Create icosahedral capsid mesh.'
     )
     register('hkcagetest', desc, hkcagetest, logger=logger)

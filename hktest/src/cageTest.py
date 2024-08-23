@@ -8,7 +8,8 @@
 
 
 def show_hk_lattice(session, h, k, H, K, symmetry=5, radius=100.0, tile="hex", color=(255, 255, 255, 255), sphere_factor=0, edge_radius=None, mesh=False, replace=True):
-    from democapsid.democapsid import calc_ico, calc_lattice, meshes_to_chimerax
+    from pydemocapsid.pydemocapsid import (calc_ico, calc_lattice,
+                                           meshes_to_chimerax)
 
     print(tile)
     meshes = meshes_to_chimerax(calc_ico((h, k, H, K), calc_lattice(tile, radius), a=symmetry, s=sphere_factor))

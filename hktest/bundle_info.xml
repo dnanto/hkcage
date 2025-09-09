@@ -26,7 +26,7 @@
   </Classifiers>
 
   <AdditionalPackages>
-    <Package name="pydemocapsid" folder="/Users/dnanto/GitHub/pydemocapsid/src/pydemocapsid"></Package>
+    <Package name="pydemocapsid" folder="./pydemocapsid/src/pydemocapsid"></Package>
   </AdditionalPackages>
 
 </BundleInfo>

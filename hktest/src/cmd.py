@@ -13,13 +13,13 @@
 
 # -----------------------------------------------------------------------------
 #
-def hkcagetest(session, h, k, H = 1, K = 1, symmetry = 5, radius = 1, tile="hex", color = (255, 255, 255, 255), sphere_factor = 0, edge_radius = None, mesh = False, replace = True):
+def hkcagetest(session, h, k, H = 1, K = 1, symmetry = 5, radius = 1.0, tile="hex", color = (255, 255, 255, 255), sphere_factor = 0, edge_radius = 0.01, replace = True):
     if h == 0 and k == 0:
         from chimerax.core.errors import UserError
-        raise UserError('h and k must be positive, got %d %d' % (h,k))
+        raise UserError("h and k must be positive, got %d %d" % (h,k))
 
     from .cageTest import show_hk_lattice
-    show_hk_lattice(session, h, k, H, K, symmetry, radius, tile, color, sphere_factor, edge_radius, mesh, replace)
+    show_hk_lattice(session, h, k, H, K, symmetry, radius, tile, color, sphere_factor, edge_radius, replace)
 
 # -----------------------------------------------------------------------------
 #
@@ -31,21 +31,20 @@ def register_hkcagetest_command(logger):
 
     desc = CmdDesc(
         required = [
-            ('h', NonNegativeIntArg),
-            ('k', NonNegativeIntArg),
-            ('H', NonNegativeIntArg),
-            ('K', NonNegativeIntArg)
+            ("h", NonNegativeIntArg),
+            ("k", NonNegativeIntArg),
+            ("H", NonNegativeIntArg),
+            ("K", NonNegativeIntArg)
         ],
         keyword = [
-            ('symmetry', NonNegativeIntArg),
-            ('radius', FloatArg),
-            ('tile', StringArg),
-            ('color', Color8Arg),
-            ('sphere_factor', FloatArg),
-            ('edge_radius', FloatArg),
-            ('mesh', BoolArg),
-            ('replace', BoolArg)
+            ("symmetry", NonNegativeIntArg),
+            ("radius", FloatArg),
+            ("tile", StringArg),
+            ("color", Color8Arg),
+            ("sphere_factor", FloatArg),
+            ("edge_radius", FloatArg),
+            ("replace", BoolArg)
         ],
-        synopsis = 'Create icosahedral capsid mesh.'
+        synopsis = "Create icosahedral capsid mesh."
     )
-    register('hkcagetest', desc, hkcagetest, logger=logger)
+    register("hkcagetest", desc, hkcagetest, logger=logger)

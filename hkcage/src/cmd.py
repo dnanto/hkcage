@@ -11,23 +11,18 @@
 # or derivations thereof.
 # === UCSF ChimeraX Copyright ===
 
-# -----------------------------------------------------------------------------
-#
-def hkcagetest(session, h, k, H = 1, K = 1, symmetry = 5, radius = 1.0, tile="hex", color = (255, 255, 255, 255), sphere_factor = 0, edge_radius = 0.01, replace = True):
+
+def hkcage(session, h, k, H = 1, K = 1, symmetry = 5, radius = 1.0, tile="hex", color = (255, 255, 255, 255), sphere_factor = 0, edge_radius = 0.01, replace = True):
     if h == 0 and k == 0:
         from chimerax.core.errors import UserError
         raise UserError("h and k must be positive, got %d %d" % (h,k))
 
-    from .cageTest import show_hk_lattice
+    from .cage import show_hk_lattice
     show_hk_lattice(session, h, k, H, K, symmetry, radius, tile, color, sphere_factor, edge_radius, replace)
 
-# -----------------------------------------------------------------------------
-#
-def register_hkcagetest_command(logger):
-    from chimerax.core.commands import (BoolArg, CmdDesc, Color8Arg, EnumOf,
-                                        FloatArg, NonNegativeIntArg, StringArg,
-                                        register)
-    from chimerax.geometry.icosahedron import coordinate_system_names
+
+def register_hkcage_command(logger):
+    from chimerax.core.commands import BoolArg, CmdDesc, Color8Arg, FloatArg, NonNegativeIntArg, StringArg, register
 
     desc = CmdDesc(
         required = [
@@ -47,4 +42,4 @@ def register_hkcagetest_command(logger):
         ],
         synopsis = "Create icosahedral capsid mesh."
     )
-    register("hkcagetest", desc, hkcagetest, logger=logger)
+    register("hkcage", desc, hkcage, logger=logger)

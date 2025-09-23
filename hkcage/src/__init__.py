@@ -14,11 +14,11 @@
 from chimerax.core.toolshed import BundleAPI
 
 
-class _HKCageTestAPI(BundleAPI):
+class _HKCageAPI(BundleAPI):
 
     @staticmethod
     def register_command(command_name, logger):
         from . import cmd
-        cmd.register_hkcagetest_command(logger)
+        cmd.register_hkcage_command(logger)
 
-bundle_api = _HKCageTestAPI()
+bundle_api = _HKCageAPI()

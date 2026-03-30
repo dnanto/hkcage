@@ -1,45 +1,30 @@
-# vim: set expandtab ts=4 sw=4:
-
-# === UCSF ChimeraX Copyright ===
-# Copyright 2016 Regents of the University of California.
-# All rights reserved.  This software provided pursuant to a
-# license agreement containing restrictions on its disclosure,
-# duplication and use.  For details see:
-# http://www.rbvi.ucsf.edu/chimerax/docs/licensing.html
-# This notice must be embedded in or attached to all copies,
-# including partial copies, of the software or any revisions
-# or derivations thereof.
-# === UCSF ChimeraX Copyright ===
+from chimerax.core.commands import (BoolArg, CmdDesc, NonNegativeFloatArg,
+                                    NonNegativeIntArg, PercentFloatArg,
+                                    StringArg, TupleOf)
 
 
-def hkcage(session, h, k, H = 1, K = 1, symmetry = 5, radius = 1.0, tile="hex", color = (255, 255, 255, 255), sphere_factor = 0, edge_radius = 0.01, replace = True):
-    if h == 0 and k == 0:
-        from chimerax.core.errors import UserError
-        raise UserError("h and k must be positive, got %d %d" % (h,k))
+def hkmesh(session, h, k, H=None, K=None, symmetry=5, radius=1.0, tile="hex", color=(255, 255, 255, 255), sphere_factor=0, edge_radius=0.01, replace=True):
+    from .mesh import show_hkmesh
 
-    from .cage import show_hk_lattice
-    show_hk_lattice(session, h, k, H, K, symmetry, radius, tile, color, sphere_factor, edge_radius, replace)
+    H, K = h if H is None else H, k if K is None else K
+    show_hkmesh(session, h, k, H, K, symmetry, radius, tile, color, sphere_factor, edge_radius, replace)
 
-
-def register_hkcage_command(logger):
-    from chimerax.core.commands import BoolArg, CmdDesc, Color8Arg, FloatArg, NonNegativeIntArg, StringArg, register
-
-    desc = CmdDesc(
-        required = [
-            ("h", NonNegativeIntArg),
-            ("k", NonNegativeIntArg),
-            ("H", NonNegativeIntArg),
-            ("K", NonNegativeIntArg)
-        ],
-        keyword = [
-            ("symmetry", NonNegativeIntArg),
-            ("radius", FloatArg),
-            ("tile", StringArg),
-            ("color", Color8Arg),
-            ("sphere_factor", FloatArg),
-            ("edge_radius", FloatArg),
-            ("replace", BoolArg)
-        ],
-        synopsis = "Create icosahedral capsid mesh."
-    )
-    register("hkcage", desc, hkcage, logger=logger)
+cmd_desc = CmdDesc(
+    required = [
+        ("h", NonNegativeIntArg),
+        ("k", NonNegativeIntArg),
+    ],
+    optional=[
+        ("H", NonNegativeIntArg),
+        ("K", NonNegativeIntArg),
+    ],
+    keyword = [
+        ("symmetry", NonNegativeIntArg),
+        ("radius", NonNegativeFloatArg),
+        ("tile", StringArg),
+        ("color", TupleOf(NonNegativeIntArg, 4)),
+        ("sphere_factor", PercentFloatArg),
+        ("edge_radius", NonNegativeFloatArg),
+        ("replace", BoolArg),
+    ]
+)

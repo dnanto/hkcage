@@ -3,3 +3,5 @@ __pycache__
 hkcage/ChimeraX_HKCage.egg-info
 hkcage/build
 hkcage/dist/ChimeraX_HKCage-1.0-py3-none-any.whl
+/hkcage/ChimeraX_HKMesh.egg-info
+/hkcage/dist

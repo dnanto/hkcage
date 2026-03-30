@@ -1,7 +1,8 @@
-def show_hk_lattice(session, h, k, H, K, symmetry=5, radius=100.0, tile="hex", color=(255, 255, 255, 255), sphere_factor=0, edge_radius=1, replace=True):
+def show_hkmesh(session, h, k, H, K, symmetry=5, radius=100.0, tile="hex", color=(255, 255, 255, 255), sphere_factor=0, edge_radius=1, replace=True):
     from chimerax.core.models import Surface
     from chimerax.markers.cmd import markers_from_mesh
-    from pydemocapsid.democapsid import calc_ico, calc_lattice, meshes_to_chimerax
+    from pydemocapsid.democapsid import (calc_ico, calc_lattice,
+                                         meshes_to_chimerax)
 
     surfaces = []
     meshes = meshes_to_chimerax(calc_ico((h, k, H, K), calc_lattice(tile, radius), a=symmetry, s=sphere_factor))
@@ -14,22 +15,22 @@ def show_hk_lattice(session, h, k, H, K, symmetry=5, radius=100.0, tile="hex", c
         surfaces.append(surface)
 
     name = f"Capsid[{h}, {k}, {H}, {K}, symmetry={symmetry}, tile={tile}]"
-    markers = _cage_markers(session, name) if replace else None
+    markers = _mesh_markers(session, name) if replace else None
     model = markers_from_mesh(session, surfaces, edge_radius=edge_radius, color=color, markers=markers)
     model.name = name
-    model.hkcage = True
+    model.hkmesh = True
     markers and markers._prev_markers.delete()
 
     return model
 
 
-def _cage_markers(session, name):
+def _mesh_markers(session, name):
     from chimerax.markers import MarkerSet
-    mlist = [m for m in session.models.list(type=MarkerSet) if hasattr(m, 'hkcage')]
+    mlist = [m for m in session.models.list(type=MarkerSet) if hasattr(m, 'hkmesh')]
     if mlist:
         mset = mlist[0]
         mset._prev_markers = mset.atoms
         mset.name = name
-        mset.hkcage = True
+        mset.hkmesh = True
         return mset
     return None

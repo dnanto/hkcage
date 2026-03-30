@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools", "ChimeraX-BundleBuilder"]
+build-backend = "chimerax.bundle_builder.cx_pep517"
+
+[project]
+name = "ChimeraX-HKMesh"
+version = "0.1"
+license = "MIT"
+authors = [{ name = "Daniel Antonio Negrón", email = "dnegron2@gmu.edu" }]
+description = "Create an icosahedral capsid mesh."
+dependencies = [
+    "ChimeraX-Core >=0.1",
+    "numpy>=1.16.5",
+    "pydemocapsid @ git+https://github.com/dnanto/pydemocapsid.git"
+]
+dynamic = ["classifiers", "requires-python"]
+
+[project.readme]
+content-type = "text"
+text = "README"
+
+[project.urls]
+Home = "https://www.luquelab.com/"
+
+[chimerax]
+min-session-version = 1
+max-session-version = 1
+categories = ["General"]
+classifiers = [""]
+
+[chimerax.command.hkmesh]
+category = "Capsid"
+description = "Create an icosahedral capsid mesh."

@@ -13,7 +13,7 @@ class _HKMeshAPI(BundleAPI):
         from . import cmd
         cmd_desc = cmd.cmd_desc
         cmd_desc.synopsis = command_info.synopsis
-        register(command_info.name, cmd_desc, cmd.hkmesh, logger=logger)
+        register(command_info.name, cmd_desc, cmd.hkcage, logger=logger)
 
 
 bundle_api = _HKMeshAPI()

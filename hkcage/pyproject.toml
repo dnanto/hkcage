@@ -3,8 +3,8 @@ requires = ["setuptools", "ChimeraX-BundleBuilder"]
 build-backend = "chimerax.bundle_builder.cx_pep517"
 
 [project]
-name = "ChimeraX-HKMesh"
-version = "0.1"
+name = "ChimeraX-HKCage"
+version = "1.4"
 license = "MIT"
 authors = [{ name = "Daniel Antonio Negrón", email = "dnegron2@gmu.edu" }]
 description = "Create an icosahedral capsid mesh."
@@ -28,6 +28,6 @@ max-session-version = 1
 categories = ["General"]
 classifiers = [""]
 
-[chimerax.command.hkmesh]
+[chimerax.command.hkcage]
 category = "Capsid"
 description = "Create an icosahedral capsid mesh."

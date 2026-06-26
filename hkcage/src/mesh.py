@@ -1,4 +1,4 @@
-def show_hkmesh(session, h, k, H, K, symmetry=5, radius=100.0, tile="hex", color=(255, 255, 255, 255), sphere_factor=0, edge_radius=1, replace=True):
+def show_hkcage(session, h, k, H, K, symmetry=5, radius=100.0, tile="hex", color=(255, 255, 255, 255), sphere_factor=0, edge_radius=1, replace=True):
     from chimerax.core.models import Surface
     from chimerax.markers.cmd import markers_from_mesh
     from pydemocapsid.democapsid import (calc_ico, calc_lattice,
@@ -18,7 +18,7 @@ def show_hkmesh(session, h, k, H, K, symmetry=5, radius=100.0, tile="hex", color
     markers = _mesh_markers(session, name) if replace else None
     model = markers_from_mesh(session, surfaces, edge_radius=edge_radius, color=color, markers=markers)
     model.name = name
-    model.hkmesh = True
+    model.hkcage = True
     markers and markers._prev_markers.delete()
 
     return model
@@ -26,11 +26,11 @@ def show_hkmesh(session, h, k, H, K, symmetry=5, radius=100.0, tile="hex", color
 
 def _mesh_markers(session, name):
     from chimerax.markers import MarkerSet
-    mlist = [m for m in session.models.list(type=MarkerSet) if hasattr(m, 'hkmesh')]
+    mlist = [m for m in session.models.list(type=MarkerSet) if hasattr(m, 'hkcage')]
     if mlist:
         mset = mlist[0]
         mset._prev_markers = mset.atoms
         mset.name = name
-        mset.hkmesh = True
+        mset.hkcage = True
         return mset
     return None

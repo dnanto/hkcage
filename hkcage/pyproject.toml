@@ -9,9 +9,9 @@ license = "MIT"
 authors = [{ name = "Daniel Antonio Negrón", email = "dnegron2@gmu.edu" }]
 description = "Create an icosahedral capsid mesh."
 dependencies = [
-    "ChimeraX-Core >=0.1",
-    "numpy>=1.16.5",
-    "pydemocapsid @ git+https://github.com/dnanto/pydemocapsid.git"
+    "ChimeraX-Core >= 0.1",
+    "numpy >= 1.16.5",
+    "pydemocapsid @ git+https://github.com/dnanto/pydemocapsid.git@0.0.3"
 ]
 dynamic = ["classifiers", "requires-python"]
 
